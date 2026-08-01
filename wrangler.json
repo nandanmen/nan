@@ -1,11 +1,10 @@
 {
-	"$schema": "./node_modules/wrangler/config-schema.json",
-	"name": "nan",
-	"main": "./workers/app.ts",
-	"assets": {
-		"directory": "./build/client",
-		"binding": "ASSETS"
-	},
-	"compatibility_date": "2025-10-08",
-	"compatibility_flags": ["nodejs_compat"]
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "nan",
+  "main": "./workers/app.ts",
+  "assets": {
+    "directory": "./build/client"
+  },
+  "compatibility_date": "2025-10-08",
+  "compatibility_flags": ["nodejs_compat"]
 }
