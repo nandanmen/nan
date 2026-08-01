@@ -3,7 +3,9 @@
   "name": "nan",
   "main": "./workers/app.ts",
   "assets": {
-    "directory": "./build/client"
+    "directory": "./build/client",
+    "binding": "ASSETS",
+    "run_worker_first": ["/p/assets/*"]
   },
   "compatibility_date": "2025-10-08",
   "compatibility_flags": ["nodejs_compat"]
