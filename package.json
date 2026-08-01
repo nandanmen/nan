@@ -21,8 +21,10 @@
   "devDependencies": {
     "@cloudflare/vite-plugin": "1.15.3",
     "@cloudflare/workers-types": "4.20260504.1",
+    "@mdx-js/rollup": "^3.1.1",
     "@react-router/dev": "7.9.6",
     "@tailwindcss/vite": "4.1.17",
+    "@types/mdx": "^2.0.14",
     "@types/node": "24.10.1",
     "@types/react": "19.2.7",
     "@types/react-dom": "19.2.3",
