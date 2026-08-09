@@ -1,3 +1,4 @@
+import { motion } from "motion/react";
 import { useActiveSection } from "../../../components/scroller";
 
 type Coord = [number, number];
@@ -7,11 +8,13 @@ export function Line({ from, to }: { from: Coord; to: Coord }) {
   const [x2, y2] = to;
 
   return (
-    <line
+    <motion.line
       x1={x1}
       y1={y1}
       x2={x2}
       y2={y2}
+      animate={{ x1, y1, x2, y2 }}
+      initial={false}
       vectorEffect="non-scaling-stroke"
       stroke="currentColor"
       strokeWidth="4"
@@ -21,9 +24,11 @@ export function Line({ from, to }: { from: Coord; to: Coord }) {
 
 export function Point({ x, y }: { x: number; y: number }) {
   return (
-    <circle
+    <motion.circle
       cx={x}
       cy={y}
+      animate={{ cx: x, cy: y }}
+      initial={false}
       r={0.2}
       fill="white"
       stroke="currentColor"
