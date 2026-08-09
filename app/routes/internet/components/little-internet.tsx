@@ -4,40 +4,38 @@ import { useActiveSection } from "../../../components/scroller";
 type Coord = [number, number];
 
 type ScenePoint = {
-  id: string;
   x: number;
   y: number;
 };
 
 type SceneLine = {
-  id: string;
   from: string;
   to: string;
 };
 
 type Scene = {
-  points: ScenePoint[];
+  points: Record<string, ScenePoint>;
   lines: SceneLine[];
 };
 
 const scenes: Scene[] = [
   {
-    points: [
-      { id: "a", x: 4, y: 2 },
-      { id: "b", x: 4, y: 6 },
-    ],
-    lines: [{ id: "a-b", from: "a", to: "b" }],
+    points: {
+      a: { x: 4, y: 2 },
+      b: { x: 4, y: 6 },
+    },
+    lines: [{ from: "a", to: "b" }],
   },
   {
-    points: [
-      { id: "a", x: 4, y: 2 },
-      { id: "b", x: 2, y: 6 },
-      { id: "c", x: 6, y: 6 },
-    ],
+    points: {
+      a: { x: 4, y: 2 },
+      b: { x: 2, y: 6 },
+      c: { x: 6, y: 6 },
+    },
     lines: [
-      { id: "a-b", from: "a", to: "b" },
-      { id: "a-c", from: "a", to: "c" },
-      { id: "b-c", from: "b", to: "c" },
+      { from: "a", to: "b" },
+      { from: "a", to: "c" },
+      { from: "b", to: "c" },
     ],
   },
 ];
@@ -77,14 +75,9 @@ export function Point({ x, y }: { x: number; y: number }) {
   );
 }
 
-function pointsById(points: ScenePoint[]) {
-  return new Map(points.map((point) => [point.id, point]));
-}
-
 export function LittleInternet() {
   const activeSection = useActiveSection();
   const scene = scenes[activeSection] ?? scenes[0];
-  const pointMap = pointsById(scene.points);
 
   return (
     <div data-active-section={activeSection}>
@@ -129,14 +122,14 @@ export function LittleInternet() {
           ))}
         </g>
         {scene.lines.map((line) => {
-          const from = pointMap.get(line.from);
-          const to = pointMap.get(line.to);
+          const from = scene.points[line.from];
+          const to = scene.points[line.to];
           if (!from || !to) return null;
 
-          return <Line key={line.id} from={[from.x, from.y]} to={[to.x, to.y]} />;
+          return <Line key={`${line.from}-${line.to}`} from={[from.x, from.y]} to={[to.x, to.y]} />;
         })}
-        {scene.points.map((point) => (
-          <Point key={point.id} x={point.x} y={point.y} />
+        {Object.entries(scene.points).map(([id, point]) => (
+          <Point key={id} x={point.x} y={point.y} />
         ))}
       </svg>
     </div>
