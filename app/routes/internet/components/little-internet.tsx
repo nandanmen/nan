@@ -1,9 +1,47 @@
+import { motion } from "motion/react";
 import { useActiveSection } from "../../../components/scroller";
+
+type Coord = [number, number];
+
+export function Line({ from, to }: { from: Coord; to: Coord }) {
+  const [x1, y1] = from;
+  const [x2, y2] = to;
+
+  return (
+    <motion.line
+      x1={x1}
+      y1={y1}
+      x2={x2}
+      y2={y2}
+      animate={{ x1, y1, x2, y2 }}
+      initial={false}
+      vectorEffect="non-scaling-stroke"
+      stroke="currentColor"
+      strokeWidth="4"
+    />
+  );
+}
+
+export function Point({ x, y }: { x: number; y: number }) {
+  return (
+    <motion.circle
+      cx={x}
+      cy={y}
+      animate={{ cx: x, cy: y }}
+      initial={false}
+      r={0.2}
+      fill="white"
+      stroke="currentColor"
+      vectorEffect="non-scaling-stroke"
+      strokeWidth="8"
+    />
+  );
+}
 
 export function LittleInternet() {
   const activeSection = useActiveSection();
   const isNetwork = activeSection === 1;
-  const lowerCircleX = isNetwork ? 2 : 4;
+  const lowerX = isNetwork ? 2 : 4;
 
   return (
     <div data-active-section={activeSection}>
@@ -47,66 +85,16 @@ export function LittleInternet() {
             />
           ))}
         </g>
-        <line
-          y1="2"
-          x1="4"
-          x2={lowerCircleX}
-          y2="6"
-          vectorEffect="non-scaling-stroke"
-          stroke="currentColor"
-          strokeWidth="4"
-        />
+        <Line from={[4, 2]} to={[lowerX, 6]} />
         {isNetwork && (
           <>
-            <line
-              x1="4"
-              x2="6"
-              y1="2"
-              y2="6"
-              vectorEffect="non-scaling-stroke"
-              stroke="currentColor"
-              strokeWidth="4"
-            />
-            <line
-              x1={lowerCircleX}
-              x2="6"
-              y1="6"
-              y2="6"
-              vectorEffect="non-scaling-stroke"
-              stroke="currentColor"
-              strokeWidth="4"
-            />
+            <Line from={[4, 2]} to={[6, 6]} />
+            <Line from={[lowerX, 6]} to={[6, 6]} />
           </>
         )}
-        <circle
-          cx={4}
-          cy={2}
-          r={0.2}
-          fill="white"
-          stroke="currentColor"
-          vectorEffect="non-scaling-stroke"
-          strokeWidth="8"
-        />
-        {isNetwork && (
-          <circle
-            cx={6}
-            cy={6}
-            r={0.2}
-            fill="white"
-            stroke="currentColor"
-            vectorEffect="non-scaling-stroke"
-            strokeWidth="8"
-          />
-        )}
-        <circle
-          cx={lowerCircleX}
-          cy={6}
-          r={0.2}
-          fill="white"
-          stroke="currentColor"
-          vectorEffect="non-scaling-stroke"
-          strokeWidth="8"
-        />
+        <Point x={4} y={2} />
+        {isNetwork && <Point x={6} y={6} />}
+        <Point x={lowerX} y={6} />
       </svg>
     </div>
   );
