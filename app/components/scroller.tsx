@@ -100,13 +100,13 @@ export function Scroller({ children, figure }: ScrollerProps) {
 
   return (
     <div
-      className="grid grid-cols-1 gap-12 lg:grid-cols-2 lg:gap-16 my-18 first:mt-0 last:mb-0"
+      className="grid grid-cols-1 gap-12 lg:grid-cols-2 lg:gap-24 my-18 first:mt-0 last:mb-0"
       data-full-width
     >
-      <div>
+      <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,60ch)]">
         {sections.map((section, index) => (
           <section
-            className="min-h-[40vh] grid gap-y-6 auto-rows-min"
+            className="min-h-[45vh] grid gap-y-6 auto-rows-min col-start-2"
             // biome-ignore lint/suspicious/noArrayIndexKey: <explanation>
             key={index}
             ref={(element) => {
@@ -117,7 +117,7 @@ export function Scroller({ children, figure }: ScrollerProps) {
           </section>
         ))}
       </div>
-      <div className="sticky top-16 max-h-[calc(100vh-128px)] border bg-gray-1">
+      <div className="sticky top-16 max-h-[calc(100vh-128px)] max-w-[60ch] h-fit">
         <ActiveSectionContext value={activeSection}>{figure}</ActiveSectionContext>
       </div>
     </div>
