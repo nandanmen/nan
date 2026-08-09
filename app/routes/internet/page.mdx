@@ -1,11 +1,85 @@
-# The Internet
+import { Scroller } from "../../components/scroller";
+import { Internet } from "./components/internet";
 
-The internet is a network of networks: computers using shared protocols to exchange information across the world.
+<Scroller figure={<Internet />}>
 
-## How it works
+## A Little Internet
 
-When you visit a site, your device asks DNS for its address, connects to the server, and requests the page. That request can travel through many independent networks before a response returns.
+One way to transmit data between two computers is to have them be physically connected to each other—be it through cables or some form of wireless technology.
 
-## Built for connection
+To send data, a computer only needs to send it along the physical connection.
 
-Open standards let people publish, communicate, and build new services without needing permission from a single owner. That openness is what makes the internet useful—and worth protecting.
+```
+send button
+```
+
+---
+
+If we add a third computer, we get a network.
+
+Now, each computer needs a label so that the other computers can know where to send data to. For now, let's label them 1, 2, and 3.
+
+Here, we can send data by sending it over the physical connection that's connected to our destination computer.
+
+```
+send button
+```
+
+---
+
+Let's now add two more computers, giving us a total network size of five computers. Here, in order for a computer to send data to any other computer in the network, it needs a direct physical connection to _every other computer_. For a network of five computers, that's 20 total connections!
+
+If we then add a 6th computer, we'll need to add 5 more connections:
+
+```
+add button
+```
+
+A 7th, 6 more connections, and so on. This quickly becomes impractical!
+
+---
+
+One way to fix this is to have a dedicated _central_ computer whose sole purpose is to connect the computers in the network to each other. In this setup, the computers only need to be physically connected to the central computer.
+
+When a computer wants to send data to another, it'll send it to the central computer with the destination IP address. Since this central computer knows all of the IP addresses in the network, it can correctly _route_ the data to its destination.
+
+```
+send button
+```
+
+We'll call this central computer a **router** because, er, it routes.
+
+---
+
+Let's introduce another network to the mix.
+
+Here, we have two networks, Network 1 and Network 2, each with three connected computers. The routers of the two networks are physically connected to each other.
+
+In this setup, the routers only know about the computers in their own network, and not the computers in the other network. How can it send data to them?
+
+One option is to have every router know about every computer, including those not in its own network. But this feels wasteful—the other router already knows about its own computers, so why should we duplicate?
+
+**What if we include the network number in each computer's label?** Here, computer 1 becomes `1.1`, computer 2 becomes `1.2`, computer 5 becomes `2.2`, and so on.
+
+```
+1.1 -> Network 1, Computer 1
+2.2 -> Network 2, Computer 2 // previously computer 5
+```
+
+In this setup, if computer `1.1` wants to send data to computer `2.3`, it will:
+
+1. Send the data to the router with the destination IP address `2.3`;
+2. The router sees the IP address starts with "2", so it sends it to the router in Network 2;
+3. The router in Network 2 will see the destination is computer `2.3`, and sends it to the computer.
+
+```
+send button
+```
+
+We can add a third router (and network) and everything will work without any changes necessary.
+
+```
+send button
+```
+
+</Scroller>
