@@ -38,6 +38,27 @@ const scenes: Scene[] = [
       { from: "b", to: "c" },
     ],
   },
+  {
+    points: {
+      a: { x: 4, y: 2 },
+      b: { x: 2, y: 6 },
+      c: { x: 6, y: 6 },
+      d: { x: 1, y: 3 },
+      e: { x: 7, y: 3 },
+    },
+    lines: [
+      { from: "a", to: "b" },
+      { from: "a", to: "c" },
+      { from: "a", to: "d" },
+      { from: "a", to: "e" },
+      { from: "b", to: "c" },
+      { from: "b", to: "d" },
+      { from: "b", to: "e" },
+      { from: "c", to: "d" },
+      { from: "c", to: "e" },
+      { from: "d", to: "e" },
+    ],
+  },
 ];
 
 export function Line({ from, to }: { from: Coord; to: Coord }) {
