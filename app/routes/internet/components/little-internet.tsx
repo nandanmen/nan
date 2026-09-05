@@ -43,8 +43,8 @@ const scenes: Scene[] = [
       a: { x: 4, y: 2 },
       b: { x: 2, y: 6 },
       c: { x: 6, y: 6 },
-      d: { x: 1, y: 3 },
-      e: { x: 7, y: 3 },
+      d: { x: 2, y: 3 },
+      e: { x: 6, y: 3 },
     },
     lines: [
       { from: "a", to: "b" },
@@ -101,47 +101,18 @@ export function LittleInternet() {
   const scene = scenes[activeSection] ?? scenes[0];
 
   return (
-    <div data-active-section={activeSection}>
+    <div
+      data-active-section={activeSection}
+      className="outline outline-blue-9"
+    >
       <svg
         aria-labelledby="little-internet-grid-title"
-        className="size-full"
+        className="block size-full overflow-visible"
         fill="none"
         role="img"
         stroke="currentColor"
-        viewBox="-0.025 -0.025 8.05 8.05"
+        viewBox="0 0 8 8"
       >
-        <title id="little-internet-grid-title">Eight by eight grid</title>
-        <rect
-          x={0}
-          y={0}
-          width={8}
-          height={8}
-          fill="white"
-          stroke="currentColor"
-          vectorEffect="non-scaling-stroke"
-        />
-        <g className="stroke-gray-4">
-          {Array.from({ length: 7 }, (_, index) => (
-            <line
-              key={`vertical-${index}`}
-              x1={index + 1}
-              x2={index + 1}
-              y1={0}
-              y2={8}
-              vectorEffect="non-scaling-stroke"
-            />
-          ))}
-          {Array.from({ length: 7 }, (_, index) => (
-            <line
-              key={`horizontal-${index}`}
-              x1={0}
-              x2={8}
-              y1={index + 1}
-              y2={index + 1}
-              vectorEffect="non-scaling-stroke"
-            />
-          ))}
-        </g>
         {scene.lines.map((line) => {
           const from = scene.points[line.from];
           const to = scene.points[line.to];
@@ -149,6 +120,32 @@ export function LittleInternet() {
 
           return <Line key={`${line.from}-${line.to}`} from={[from.x, from.y]} to={[to.x, to.y]} />;
         })}
+        {activeSection === 0 && (
+          <g fill="currentColor" fontSize={0.3} className="font-sans">
+            <line
+              x1={4.2}
+              x2={4.6}
+              y1={2}
+              y2={2}
+              vectorEffect="non-scaling-stroke"
+              strokeWidth="2"
+            />
+            <text x={4.8} y={2} stroke="none" dominantBaseline="middle">
+              1
+            </text>
+            <line
+              x1={4.2}
+              x2={4.6}
+              y1={6}
+              y2={6}
+              vectorEffect="non-scaling-stroke"
+              strokeWidth="2"
+            />
+            <text x={4.8} y={6} stroke="none" dominantBaseline="middle">
+              2
+            </text>
+          </g>
+        )}
         {Object.entries(scene.points).map(([id, point]) => (
           <Point key={id} x={point.x} y={point.y} />
         ))}

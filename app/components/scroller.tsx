@@ -9,6 +9,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { cn } from "cn";
 
 const ActiveSectionContext = createContext<number | null>(null);
 
@@ -56,6 +57,22 @@ export function useActiveSection() {
 
 const ACTIVE_THRESHOLD = 0.6;
 
+function PaperGutter() {
+  return (
+    <div aria-hidden="true" className="relative hidden lg:block">
+      <div
+        className="absolute inset-0"
+        style={{
+          backgroundImage:
+            "radial-gradient(circle, var(--olive-2) 5px, rgb(0 0 0 / 0.15) 5.5px, transparent 6px)",
+          backgroundSize: "100% var(--grid-size)",
+          backgroundRepeat: "repeat-y",
+        }}
+      />
+    </div>
+  );
+}
+
 /**
  * Presents MDX sections beside a sticky figure. Horizontal rules in children
  * delimit sections, so MDX's `---` syntax can be used as the separator.
@@ -100,10 +117,18 @@ export function Scroller({ children, figure }: ScrollerProps) {
 
   return (
     <div
-      className="grid grid-cols-1 gap-12 lg:grid-cols-2 lg:gap-24 my-18 first:mt-0 last:mb-0"
+      className={cn(
+        "[--grid-size:32px] [--scroller-padding:calc(var(--spacing)*8)] [--scroller-figure-padding:calc(var(--scroller-padding)*2)]",
+        "grid grid-cols-1 gap-12 lg:grid-cols-[var(--grid-size)_minmax(0,1fr)_calc(round(down,calc(50%-var(--grid-size)-var(--scroller-padding)*2),calc(var(--grid-size)*2))+var(--scroller-padding)*2)_var(--grid-size)] lg:gap-0 my-18 first:mt-0 last:mb-0 bg-olive-1 divide-x divide-black/10 shadow w-full max-w-[calc(120ch+var(--scroller-padding)*4+var(--grid-size)*2)] mx-auto",
+      )}
+      style={{
+        height:
+          "calc(round(up, calc(100% - var(--scroller-padding) * 2), calc(var(--grid-size) * 2)) + var(--scroller-padding) * 2)",
+      }}
       data-full-width
     >
-      <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,60ch)]">
+      <PaperGutter />
+      <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,60ch)] p-16">
         {sections.map((section, index) => (
           <section
             className="min-h-[45vh] grid gap-y-6 auto-rows-min col-start-2"
@@ -117,9 +142,34 @@ export function Scroller({ children, figure }: ScrollerProps) {
           </section>
         ))}
       </div>
-      <div className="sticky top-16 max-h-[calc(100vh-128px)] max-w-[60ch] h-fit">
-        <ActiveSectionContext value={activeSection}>{figure}</ActiveSectionContext>
-      </div>
+      <figure
+        className="p-(--scroller-padding)"
+        style={{
+          backgroundImage: [
+            "radial-gradient(circle at center, rgb(0 0 0 / 0.1) 0.5px, transparent 1px)",
+            "radial-gradient(circle at center, rgb(0 0 0 / 0.1) 0.5px, transparent 1px)",
+            "radial-gradient(circle at 0.5px 2px, rgb(0 0 0 / 0.1) 0.5px, transparent 1px)",
+            "radial-gradient(circle at 2px 0.5px, rgb(0 0 0 / 0.1) 0.5px, transparent 1px)",
+          ].join(", "),
+          backgroundSize: "1px 4px, 4px 1px, var(--grid-size) 4px, 4px var(--grid-size)",
+          backgroundPosition: "right top, left bottom, left top, left top",
+          backgroundRepeat: "repeat-y, repeat-x, repeat, repeat",
+          backgroundOrigin: "content-box",
+          backgroundClip: "content-box",
+        }}
+      >
+        <div
+          className="sticky top-(--scroller-figure-padding) max-h-[calc(100vh-var(--scroller-figure-padding)*2)] h-fit"
+          style={{
+            // Keep the figure origin on a background grid intersection.
+            margin:
+              "round(down, max(0px, calc(var(--scroller-figure-padding) - var(--scroller-padding))), var(--grid-size))",
+          }}
+        >
+          <ActiveSectionContext value={activeSection}>{figure}</ActiveSectionContext>
+        </div>
+      </figure>
+      <PaperGutter />
     </div>
   );
 }

@@ -36,7 +36,7 @@ export default function Internet() {
           mini-version of the Internet.
         </p>
       </header>
-      <div className="px-16">
+      <div className="px-4">
         <article className="grid grid-cols-[minmax(0,1fr)_minmax(0,60ch)_minmax(0,1fr)] gap-y-6 [&>*:not([data-full-width])]:col-start-2 [&>*[data-full-width]]:col-span-full">
           <InternetContent
             components={{
