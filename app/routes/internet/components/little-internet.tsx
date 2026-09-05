@@ -1,26 +1,28 @@
-import { useActiveSection } from "../../../components/scroller";
-import { scenes, type ScenePoint } from "./little-internet.scenes";
-import { useId } from "react";
-import { motion } from "motion/react";
+import {
+  littleInternetVisual,
+  littleInternetVisualWithSixthNode,
+  useVisual,
+  type ScenePoint as ScenePointData,
+} from "./little-internet.scenes";
+import { useAtomValue } from "jotai";
+import { sixthNodeAddedAtom } from "./little-internet-events";
 
 export function LittleInternet() {
-  const activeSection = useActiveSection();
-  const scene = scenes[activeSection] ?? scenes[0];
-  const titleId = useId();
-  const links = scene.points.flatMap((from, index) =>
-    scene.points.slice(index + 1).map((to) => ({ from, to })),
+  const sixthNodeAdded = useAtomValue(sixthNodeAddedAtom);
+  const scene = useVisual(
+    sixthNodeAdded ? littleInternetVisualWithSixthNode : littleInternetVisual,
   );
+  const links = scene.flatMap((from, index) => scene.slice(index + 1).map((to) => ({ from, to })));
 
   return (
     <div className="w-full">
       <svg
-        aria-labelledby={titleId}
+        aria-label="Connected computers"
         className="block w-full h-auto aspect-square overflow-visible"
         fill="none"
         role="img"
         viewBox="0 0 16 16"
       >
-        <title id={titleId}>{scene.title}</title>
         <g stroke="currentColor" className="text-gray-7">
           {links.map(({ from, to }) => (
             <line
@@ -34,7 +36,7 @@ export function LittleInternet() {
             />
           ))}
         </g>
-        {scene.points.map(
+        {scene.map(
           (point) =>
             point.label && (
               <VertexLabel
@@ -47,19 +49,7 @@ export function LittleInternet() {
               />
             ),
         )}
-        {scene.packet && (
-          <motion.g style={scene.packet}>
-            <ellipse
-              rx="0.2"
-              ry="0.3"
-              className="fill-green-9 text-gray-1"
-              stroke="currentColor"
-              vectorEffect="non-scaling-stroke"
-              strokeWidth="2"
-            />
-          </motion.g>
-        )}
-        {scene.points.map((point) => (
+        {scene.map((point) => (
           <ScenePoint key={point.id} point={point} />
         ))}
       </svg>
@@ -67,7 +57,7 @@ export function LittleInternet() {
   );
 }
 
-function ScenePoint({ point }: { point: ScenePoint }) {
+function ScenePoint({ point }: { point: ScenePointData }) {
   const triangleHeight = Math.sqrt(3) / 2;
 
   switch (point.shape) {

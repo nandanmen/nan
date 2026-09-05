@@ -1,5 +1,6 @@
 import { Scroller } from "../../components/scroller";
 import { LittleInternet } from "./components/little-internet";
+import { LittleInternetButton } from "./components/little-internet-button";
 
 <Scroller figure={<LittleInternet />}>
 
@@ -29,9 +30,7 @@ Let's now add two more computers, giving us a total network size of five compute
 
 If we then add a 6th computer, we'll need to add 5 more connections:
 
-```
-add button
-```
+<LittleInternetButton event={{ type: "add-sixth-node" }}>Add a sixth computer</LittleInternetButton>
 
 A 7th, 6 more connections, and so on. This quickly becomes impractical!
 

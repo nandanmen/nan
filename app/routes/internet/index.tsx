@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { CodeBlock } from "./code-block";
 import InternetContent from "./page.mdx";
 import { InterruptedWorldMap } from "./world-map";
+import { Provider } from "jotai";
 
 export function meta() {
   return [
@@ -38,17 +39,19 @@ export default function Internet() {
       </header>
       <div className="px-4">
         <article className="grid grid-cols-[minmax(0,1fr)_minmax(0,60ch)_minmax(0,1fr)] gap-y-6 [&>*:not([data-full-width])]:col-start-2 [&>*[data-full-width]]:col-span-full">
-          <InternetContent
-            components={{
-              h2: ({ children }: { children: ReactNode }) => (
-                <h2 className="text-2xl font-medium">{children}</h2>
-              ),
-              strong: ({ children }: { children: ReactNode }) => (
-                <strong className="font-medium">{children}</strong>
-              ),
-              pre: CodeBlock,
-            }}
-          />
+          <Provider>
+            <InternetContent
+              components={{
+                h2: ({ children }: { children: ReactNode }) => (
+                  <h2 className="text-2xl font-medium">{children}</h2>
+                ),
+                strong: ({ children }: { children: ReactNode }) => (
+                  <strong className="font-medium">{children}</strong>
+                ),
+                pre: CodeBlock,
+              }}
+            />
+          </Provider>
         </article>
       </div>
     </main>
