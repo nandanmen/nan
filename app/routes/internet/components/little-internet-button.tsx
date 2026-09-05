@@ -21,7 +21,7 @@ export function LittleInternetButton({
 }: LittleInternetButtonProps) {
   const sixthNodeAdded = useAtomValue(sixthNodeAddedAtom);
   const sendEvent = useSetAtom(littleInternetEventAtom);
-  const completed = event.type === "add-sixth-node" && sixthNodeAdded;
+  const completed = event.type === "add" && sixthNodeAdded;
 
   return (
     <button

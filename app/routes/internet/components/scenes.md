@@ -12,10 +12,14 @@ type ScenePoint = {
   label?: string;
 }
 
-type SceneDefinition = Point[];
+type PointMap = Record<string, Point>;
+
+type SceneDefinition = PointMap | {
+  initial: PointMap;
+  on: Record<string, SceneDefinition>;
+};
 
 type Point = {
-  id: string;
   x: number;
   y: number;
   label?: { x: number; y: number };

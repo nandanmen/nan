@@ -1,22 +1,30 @@
 import { useActiveSection } from "../../../components/scroller";
+import { useAtomValue } from "jotai";
+import { littleInternetEventAtom } from "./little-internet-events";
 
-export type VisualPoint = {
+export type PointDefinition = {
   shape: "circle" | "square" | "triangle" | "diamond";
   className: string;
   label?: string;
 };
 
 export type Point = {
-  id: string;
   x: number;
   y: number;
   label?: { x: number; y: number };
 };
 
-export type SceneDefinition = Point[];
+export type PointMap = Record<string, Point>;
+
+export type SceneDefinition =
+  | PointMap
+  | {
+      initial: PointMap;
+      on: Record<string, SceneDefinition>;
+    };
 
 export type Visual = {
-  points: Record<string, VisualPoint>;
+  points: Record<string, PointDefinition>;
   scenes: SceneDefinition[];
 };
 
@@ -37,24 +45,28 @@ export type Scene = ScenePoint[];
 
 export function useVisual(visual: Visual): Scene {
   const activeSection = useActiveSection();
-  const scene = visual.scenes[activeSection] ?? visual.scenes[0] ?? [];
+  const event = useAtomValue(littleInternetEventAtom);
+  const definition = visual.scenes[activeSection] ?? visual.scenes[0];
+  if (!definition) return [];
 
-  return scene.map((point) => {
-    const visualPoint = visual.points[point.id];
+  const scene = resolveScene(definition, event?.type);
+
+  return Object.entries(scene).map(([id, point]) => {
+    const visualPoint = visual.points[id];
 
     if (!visualPoint) {
-      throw new Error(`Visual point "${point.id}" is not defined.`);
+      throw new Error(`Visual point "${id}" is not defined.`);
     }
 
     return {
-      id: point.id,
+      id,
       x: point.x,
       y: point.y,
       shape: visualPoint.shape,
       className: visualPoint.className,
       ...(point.label && {
         label: {
-          text: visualPoint.label ?? point.id,
+          text: visualPoint.label ?? id,
           x: point.label.x,
           y: point.label.y,
         },
@@ -63,30 +75,48 @@ export function useVisual(visual: Visual): Scene {
   });
 }
 
-const sixthNode: Point = {
-  id: "six",
-  x: 8,
-  y: 12,
-  label: { x: 8, y: 13.5 },
+function resolveScene(definition: SceneDefinition, eventType?: string): PointMap {
+  if (isTransitionDefinition(definition)) {
+    const nextDefinition = eventType ? definition.on[eventType] : undefined;
+    return nextDefinition ? resolveScene(nextDefinition, eventType) : definition.initial;
+  }
+
+  return definition;
+}
+
+function isTransitionDefinition(
+  definition: SceneDefinition,
+): definition is Exclude<SceneDefinition, PointMap> {
+  return "initial" in definition && "on" in definition;
+}
+
+const fiveComputerScene: PointMap = {
+  one: { x: 8, y: 3, label: { x: 8, y: 1.5 } },
+  four: { x: 11, y: 5, label: { x: 12.5, y: 5 } },
+  three: { x: 10, y: 9, label: { x: 11.5, y: 10.5 } },
+  two: { x: 6, y: 9, label: { x: 4.5, y: 10.5 } },
+  five: { x: 5, y: 5, label: { x: 3.5, y: 5 } },
 };
 
 const scenes: SceneDefinition[] = [
-  [
-    { id: "one", x: 8, y: 3 },
-    { id: "two", x: 8, y: 9 },
-  ],
-  [
-    { id: "one", x: 8, y: 3, label: { x: 8, y: 1.5 } },
-    { id: "two", x: 5, y: 9, label: { x: 3.5, y: 10.5 } },
-    { id: "three", x: 11, y: 9, label: { x: 12.5, y: 10.5 } },
-  ],
-  [
-    { id: "one", x: 8, y: 3, label: { x: 8, y: 1.5 } },
-    { id: "four", x: 11, y: 5, label: { x: 12.5, y: 5 } },
-    { id: "three", x: 10, y: 9, label: { x: 11.5, y: 10.5 } },
-    { id: "two", x: 6, y: 9, label: { x: 4.5, y: 10.5 } },
-    { id: "five", x: 5, y: 5, label: { x: 3.5, y: 5 } },
-  ],
+  {
+    one: { x: 8, y: 3 },
+    two: { x: 8, y: 9 },
+  },
+  {
+    one: { x: 8, y: 3, label: { x: 8, y: 1.5 } },
+    two: { x: 5, y: 9, label: { x: 3.5, y: 10.5 } },
+    three: { x: 11, y: 9, label: { x: 12.5, y: 10.5 } },
+  },
+  {
+    initial: fiveComputerScene,
+    on: {
+      add: {
+        ...fiveComputerScene,
+        six: { x: 8, y: 12, label: { x: 8, y: 13.5 } },
+      },
+    },
+  },
 ];
 
 export const littleInternetVisual: Visual = {
@@ -99,9 +129,4 @@ export const littleInternetVisual: Visual = {
     six: { shape: "square", className: "fill-blue-9", label: "6" },
   },
   scenes,
-};
-
-export const littleInternetVisualWithSixthNode: Visual = {
-  ...littleInternetVisual,
-  scenes: [...scenes.slice(0, -1), [...scenes.at(-1)!, sixthNode]],
 };

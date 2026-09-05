@@ -11,7 +11,12 @@ import {
 } from "react";
 import { cn } from "cn";
 
+type Section = {
+  index: number;
+};
+
 const ActiveSectionContext = createContext<number | null>(null);
+const SectionProvider = createContext<Section | null>(null);
 
 type ScrollerProps = {
   children: ReactNode;
@@ -53,6 +58,16 @@ export function useActiveSection() {
   }
 
   return activeSection;
+}
+
+export function useSection() {
+  const section = useContext(SectionProvider);
+
+  if (section === null) {
+    throw new Error("useSection must be used inside a SectionProvider.");
+  }
+
+  return section;
 }
 
 const ACTIVE_THRESHOLD = 0.7;
@@ -135,7 +150,7 @@ export function Scroller({ children, figure }: ScrollerProps) {
               sectionElements.current[index] = element;
             }}
           >
-            {section}
+            <SectionProvider value={{ index }}>{section}</SectionProvider>
           </section>
         ))}
       </div>

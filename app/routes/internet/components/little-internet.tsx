@@ -1,17 +1,11 @@
 import {
   littleInternetVisual,
-  littleInternetVisualWithSixthNode,
   useVisual,
   type ScenePoint as ScenePointData,
 } from "./little-internet.scenes";
-import { useAtomValue } from "jotai";
-import { sixthNodeAddedAtom } from "./little-internet-events";
 
 export function LittleInternet() {
-  const sixthNodeAdded = useAtomValue(sixthNodeAddedAtom);
-  const scene = useVisual(
-    sixthNodeAdded ? littleInternetVisualWithSixthNode : littleInternetVisual,
-  );
+  const scene = useVisual(littleInternetVisual);
   const links = scene.flatMap((from, index) => scene.slice(index + 1).map((to) => ({ from, to })));
 
   return (
