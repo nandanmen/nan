@@ -103,16 +103,17 @@ export function LittleInternet() {
   return (
     <div
       data-active-section={activeSection}
-      className="outline outline-blue-9"
+      className="w-full"
     >
       <svg
         aria-labelledby="little-internet-grid-title"
-        className="block size-full overflow-visible"
+        className="block w-full h-auto aspect-square overflow-visible"
         fill="none"
         role="img"
         stroke="currentColor"
         viewBox="0 0 8 8"
       >
+        <title id="little-internet-grid-title">A network of connected points</title>
         {scene.lines.map((line) => {
           const from = scene.points[line.from];
           const to = scene.points[line.to];

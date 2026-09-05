@@ -37,3 +37,15 @@ The component passed to `figure` will have access to the current active section 
 ```tsx
 useActiveSection(): number; // the index of the active section
 ```
+
+## Figure grid
+
+The sticky drawing surface fills the figure column's content width. Its square grid
+cells are one eighth of that width (`12.5cqw`), or one sixteenth (`6.25cqw`) at
+`lg` and above, measured against the figure's inline size container. A full-width
+square SVG with `viewBox="0 0 8 8"` shares the grid's
+origin and spacing, so integer coordinates land on intersections at any width.
+Keep the SVG free of additional padding or margins.
+
+The background moves with the sticky drawing surface to preserve alignment while
+scrolling. The paper gutter spacing is independent and remains fixed at 32px.
