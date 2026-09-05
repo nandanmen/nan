@@ -55,7 +55,7 @@ export function useActiveSection() {
   return activeSection;
 }
 
-const ACTIVE_THRESHOLD = 0.6;
+const ACTIVE_THRESHOLD = 0.7;
 
 function PaperGutter() {
   return (
@@ -119,8 +119,9 @@ export function Scroller({ children, figure }: ScrollerProps) {
     <div
       className={cn(
         "[--scroller-gutter-size:32px] [--scroller-padding:calc(var(--spacing)*8)] [--scroller-figure-padding:calc(var(--scroller-padding)*2)]",
-        "grid grid-cols-1 gap-12 lg:grid-cols-[var(--scroller-gutter-size)_minmax(0,1fr)_minmax(0,1fr)_var(--scroller-gutter-size)] lg:gap-0 my-18 first:mt-0 last:mb-0 bg-olive-1 divide-x divide-black/10 shadow w-full max-w-[calc(120ch+var(--scroller-padding)*4+var(--scroller-gutter-size)*2)] mx-auto",
+        "grid grid-cols-1 gap-12 lg:grid-cols-[var(--scroller-gutter-size)_minmax(0,1fr)_minmax(0,1fr)_var(--scroller-gutter-size)] lg:gap-0 my-18 first:mt-0 last:mb-0 [&:has(+_[data-scroller])]:mb-0 [[data-scroller]+&]:-mt-2 bg-olive-1 divide-x divide-black/10 shadow w-full max-w-[calc(120ch+var(--scroller-padding)*4+var(--scroller-gutter-size)*2)] mx-auto",
       )}
+      data-scroller
       data-full-width
     >
       <PaperGutter />
@@ -142,22 +143,27 @@ export function Scroller({ children, figure }: ScrollerProps) {
         className="min-w-0 p-(--scroller-padding) pb-0"
         style={{ containerType: "inline-size" }}
       >
-        <div className="[--grid-size:12.5cqw] xl:[--grid-size:6.25cqw] h-full"
-          style={{
-            // Eight square cells (sixteen at lg) share the full-width SVG's coordinate system.
-            // Paint on the sticky surface so scrolling preserves the grid origin.
-            backgroundImage: [
-              "radial-gradient(circle at center, rgb(0 0 0 / 0.15) 0.5px, transparent 1px)",
-              "radial-gradient(circle at 0.5px 2px, rgb(0 0 0 / 0.15) 0.5px, transparent 1px)",
-              "radial-gradient(circle at 2px 0.5px, rgb(0 0 0 / 0.15) 0.5px, transparent 1px)",
-            ].join(", "),
-            backgroundSize: "1px 4px, var(--grid-size) 4px, 4px var(--grid-size)",
-            backgroundPosition: "right top, left top, left top",
-            backgroundRepeat: "repeat-y, repeat, repeat",
-          }}>
+        <div className="[--grid-size:12.5cqw] xl:[--grid-size:6.25cqw] h-full max-h-screen sticky -top-px">
           <div
-            className="sticky top-(--scroller-figure-padding) w-full h-fit [--grid-size:12.5cqw] xl:[--grid-size:6.25cqw]"
-          >
+            aria-hidden="true"
+            className="pointer-events-none absolute -inset-px p-px"
+            style={{
+              // Give edge dots room to paint while keeping the original grid origin.
+              backgroundOrigin: "content-box",
+              backgroundClip: "border-box",
+              // Center each dotted line on the SVG's grid coordinates.
+              // Offset centered tiles by half a cell so lines start at zero.
+              backgroundImage: [
+                "radial-gradient(circle at center, rgb(0 0 0 / 0.15) 0.5px, transparent 1px)",
+                "radial-gradient(circle at center, rgb(0 0 0 / 0.15) 0.5px, transparent 1px)",
+              ].join(", "),
+              backgroundSize: "var(--grid-size) 4px, 4px var(--grid-size)",
+              backgroundPosition:
+                "calc(var(--grid-size) / -2) 0px, 0px calc(var(--grid-size) / -2)",
+              backgroundRepeat: "repeat, repeat",
+            }}
+          />
+          <div className="sticky h-fit top-[calc(var(--grid-size)*3)]">
             <ActiveSectionContext value={activeSection}>{figure}</ActiveSectionContext>
           </div>
         </div>

@@ -7,7 +7,7 @@ import { LittleInternet } from "./components/little-internet";
 
 One way to transmit data between two computers is to have them be physically connected to each other—be it through cables or some form of wireless technology.
 
-To send data, a computer only needs to send it along the physical connection.
+To send data to each other, they only need to send it through the physical connection:
 
 ```
 send button
@@ -15,11 +15,9 @@ send button
 
 ---
 
-If we add a third computer, we get a network.
+Let's now add a third computer to the mix. Now, each computer has two links—one for each computer—that it needs to keep track of.
 
-Now, each computer needs a label so that the other computers can know where to send data to. For now, let's label them 1, 2, and 3.
-
-Here, we can send data by sending it over the physical connection that's connected to our destination computer.
+For a computer to send data to another, it has to know which link is connected to which computer. For that, each computer needs a **label**; let's use 1, 2, and 3 for now.
 
 ```
 send button
@@ -37,7 +35,9 @@ add button
 
 A 7th, 6 more connections, and so on. This quickly becomes impractical!
 
----
+</Scroller>
+
+<Scroller>
 
 One way to fix this is to have a dedicated _central_ computer whose sole purpose is to connect the computers in the network to each other. In this setup, the computers only need to be physically connected to the central computer.
 
@@ -83,3 +83,20 @@ send button
 ```
 
 </Scroller>
+
+## Path Finding
+
+Our little internet so far assumes that every router is physically connected to every other router. This isn't quite realistic; imagine if your home router needs to be connected to Amazon's wifi just so you can read this post!
+
+In practice, data packets typically have to go through a chain of routers before making it to its destination. For example, let’s say we have the following 3 networks connected in a chain, and we want to send data from computer `1.1` to computer `3.1`.
+
+```
+send button
+```
+
+For data from router 1 to make it to router 3, router 1 needs to know that:
+
+1. Router 3 exists
+2. Router 3 is reachable through router 2
+
+But how can router 1 know this?

@@ -1,156 +1,160 @@
-import { motion } from "motion/react";
 import { useActiveSection } from "../../../components/scroller";
-
-type Coord = [number, number];
-
-type ScenePoint = {
-  x: number;
-  y: number;
-};
-
-type SceneLine = {
-  from: string;
-  to: string;
-};
-
-type Scene = {
-  points: Record<string, ScenePoint>;
-  lines: SceneLine[];
-};
-
-const scenes: Scene[] = [
-  {
-    points: {
-      a: { x: 4, y: 2 },
-      b: { x: 4, y: 6 },
-    },
-    lines: [{ from: "a", to: "b" }],
-  },
-  {
-    points: {
-      a: { x: 4, y: 2 },
-      b: { x: 2, y: 6 },
-      c: { x: 6, y: 6 },
-    },
-    lines: [
-      { from: "a", to: "b" },
-      { from: "a", to: "c" },
-      { from: "b", to: "c" },
-    ],
-  },
-  {
-    points: {
-      a: { x: 4, y: 2 },
-      b: { x: 2, y: 6 },
-      c: { x: 6, y: 6 },
-      d: { x: 2, y: 3 },
-      e: { x: 6, y: 3 },
-    },
-    lines: [
-      { from: "a", to: "b" },
-      { from: "a", to: "c" },
-      { from: "a", to: "d" },
-      { from: "a", to: "e" },
-      { from: "b", to: "c" },
-      { from: "b", to: "d" },
-      { from: "b", to: "e" },
-      { from: "c", to: "d" },
-      { from: "c", to: "e" },
-      { from: "d", to: "e" },
-    ],
-  },
-];
-
-export function Line({ from, to }: { from: Coord; to: Coord }) {
-  const [x1, y1] = from;
-  const [x2, y2] = to;
-
-  return (
-    <motion.line
-      x1={x1}
-      y1={y1}
-      x2={x2}
-      y2={y2}
-      animate={{ x1, y1, x2, y2 }}
-      initial={false}
-      vectorEffect="non-scaling-stroke"
-      stroke="currentColor"
-      strokeWidth="4"
-    />
-  );
-}
-
-export function Point({ x, y }: { x: number; y: number }) {
-  return (
-    <motion.circle
-      cx={x}
-      cy={y}
-      animate={{ cx: x, cy: y }}
-      initial={false}
-      r={0.2}
-      fill="white"
-      stroke="currentColor"
-      vectorEffect="non-scaling-stroke"
-      strokeWidth="8"
-    />
-  );
-}
+import { scenes, type ScenePoint } from "./little-internet.scenes";
+import { useId } from "react";
+import { motion } from "motion/react";
 
 export function LittleInternet() {
   const activeSection = useActiveSection();
   const scene = scenes[activeSection] ?? scenes[0];
+  const titleId = useId();
+  const links = scene.points.flatMap((from, index) =>
+    scene.points.slice(index + 1).map((to) => ({ from, to })),
+  );
 
   return (
-    <div
-      data-active-section={activeSection}
-      className="w-full"
-    >
+    <div className="w-full">
       <svg
-        aria-labelledby="little-internet-grid-title"
+        aria-labelledby={titleId}
         className="block w-full h-auto aspect-square overflow-visible"
         fill="none"
         role="img"
-        stroke="currentColor"
-        viewBox="0 0 8 8"
+        viewBox="0 0 16 16"
       >
-        <title id="little-internet-grid-title">A network of connected points</title>
-        {scene.lines.map((line) => {
-          const from = scene.points[line.from];
-          const to = scene.points[line.to];
-          if (!from || !to) return null;
-
-          return <Line key={`${line.from}-${line.to}`} from={[from.x, from.y]} to={[to.x, to.y]} />;
-        })}
-        {activeSection === 0 && (
-          <g fill="currentColor" fontSize={0.3} className="font-sans">
+        <title id={titleId}>{scene.title}</title>
+        <g stroke="currentColor" className="text-gray-7">
+          {links.map(({ from, to }) => (
             <line
-              x1={4.2}
-              x2={4.6}
-              y1={2}
-              y2={2}
+              key={`${from.id}-${to.id}`}
+              x1={from.x}
+              y1={from.y}
+              x2={to.x}
+              y2={to.y}
               vectorEffect="non-scaling-stroke"
-              strokeWidth="2"
+              strokeWidth="6"
             />
-            <text x={4.8} y={2} stroke="none" dominantBaseline="middle">
-              1
-            </text>
-            <line
-              x1={4.2}
-              x2={4.6}
-              y1={6}
-              y2={6}
-              vectorEffect="non-scaling-stroke"
-              strokeWidth="2"
-            />
-            <text x={4.8} y={6} stroke="none" dominantBaseline="middle">
-              2
-            </text>
-          </g>
+          ))}
+        </g>
+        {scene.points.map(
+          (point) =>
+            point.label && (
+              <VertexLabel
+                key={`${point.id}-label`}
+                label={point.label.text}
+                x={point.label.x}
+                y={point.label.y}
+                targetX={point.x}
+                targetY={point.y}
+              />
+            ),
         )}
-        {Object.entries(scene.points).map(([id, point]) => (
-          <Point key={id} x={point.x} y={point.y} />
+        {scene.packet && (
+          <motion.g style={scene.packet}>
+            <ellipse
+              rx="0.2"
+              ry="0.3"
+              className="fill-green-9 text-gray-1"
+              stroke="currentColor"
+              vectorEffect="non-scaling-stroke"
+              strokeWidth="2"
+            />
+          </motion.g>
+        )}
+        {scene.points.map((point) => (
+          <ScenePoint key={point.id} point={point} />
         ))}
       </svg>
     </div>
+  );
+}
+
+function ScenePoint({ point }: { point: ScenePoint }) {
+  const triangleHeight = Math.sqrt(3) / 2;
+
+  switch (point.shape) {
+    case "circle":
+      return (
+        <circle
+          cx={point.x}
+          cy={point.y}
+          className={`${point.className} stroke-current`}
+          strokeWidth="3"
+          vectorEffect="non-scaling-stroke"
+          r="0.4"
+        />
+      );
+    case "square":
+      return (
+        <rect
+          x={point.x - 0.4}
+          y={point.y - 0.4}
+          className={`${point.className} stroke-current`}
+          strokeWidth="3"
+          vectorEffect="non-scaling-stroke"
+          width="0.8"
+          height="0.8"
+        />
+      );
+    case "triangle":
+      return (
+        <polygon
+          transform={`translate(${point.x} ${point.y})`}
+          points={`0,${(-2 * triangleHeight) / 3} 0.5,${triangleHeight / 3} -0.5,${triangleHeight / 3}`}
+          className={`${point.className} stroke-current`}
+          strokeWidth="3"
+          strokeLinejoin="round"
+          vectorEffect="non-scaling-stroke"
+        />
+      );
+    case "diamond":
+      return (
+        <polygon
+          transform={`translate(${point.x} ${point.y})`}
+          points="0,-0.6 0.48,0 0,0.6 -0.48,0"
+          className={`${point.className} stroke-current`}
+          strokeWidth="3"
+          vectorEffect="non-scaling-stroke"
+        />
+      );
+  }
+}
+
+function VertexLabel({
+  label,
+  x,
+  y,
+  targetX,
+  targetY,
+}: {
+  label: string;
+  x: number;
+  y: number;
+  targetX: number;
+  targetY: number;
+}) {
+  return (
+    <g>
+      <line
+        x1={x}
+        y1={y}
+        x2={targetX}
+        y2={targetY}
+        className="text-gray-11"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        vectorEffect="non-scaling-stroke"
+      />
+      <rect x={x - 0.45} y={y - 0.45} width="0.9" height="0.9" rx="0.1" className="fill-gray-12" />
+      <text
+        x={x}
+        y={y}
+        className="fill-gray-1 font-sans"
+        fontSize="0.55"
+        fontWeight="600"
+        textAnchor="middle"
+        dominantBaseline="central"
+      >
+        {label}
+      </text>
+    </g>
   );
 }
