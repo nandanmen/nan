@@ -1,13 +1,51 @@
 import {
-  littleInternetVisual,
   useVisual,
-  type ScenePoint as ScenePointData,
-} from "./little-internet.scenes";
+  type SceneDefinition,
+  type ScenePoint,
+  type Visual,
+} from "../../../hooks/use-visual";
+
+const scenes: SceneDefinition[] = [
+  {
+    one: { x: 8, y: 3 },
+    two: { x: 8, y: 9 },
+  },
+  {
+    one: { x: 8, y: 3, label: { x: 8, y: 1.5 } },
+    two: { x: 5, y: 9, label: { x: 3.5, y: 10.5 } },
+    three: { x: 11, y: 9, label: { x: 12.5, y: 10.5 } },
+  },
+  {
+    initial: {
+      one: { x: 8, y: 3, label: { x: 8, y: 1.5 } },
+      four: { x: 11, y: 5, label: { x: 12.5, y: 5 } },
+      three: { x: 10, y: 9, label: { x: 11.5, y: 10.5 } },
+      two: { x: 6, y: 9, label: { x: 4.5, y: 10.5 } },
+      five: { x: 5, y: 5, label: { x: 3.5, y: 5 } },
+    },
+    on: {
+      add: {
+        six: { x: 8, y: 12, label: { x: 8, y: 13.5 } },
+      },
+    },
+  },
+];
+
+const littleInternetVisual: Visual = {
+  points: {
+    one: { shape: "circle", className: "fill-blue-7", label: "1" },
+    two: { shape: "square", className: "fill-yellow-10", label: "2" },
+    three: { shape: "triangle", className: "fill-red-8", label: "3" },
+    four: { shape: "circle", className: "fill-cyan-9", label: "4" },
+    five: { shape: "diamond", className: "fill-green-9", label: "5" },
+    six: { shape: "square", className: "fill-blue-9", label: "6" },
+  },
+  scenes,
+};
 
 export function LittleInternet() {
   const scene = useVisual(littleInternetVisual);
   const links = scene.flatMap((from, index) => scene.slice(index + 1).map((to) => ({ from, to })));
-
   return (
     <div className="w-full">
       <svg
@@ -51,7 +89,7 @@ export function LittleInternet() {
   );
 }
 
-function ScenePoint({ point }: { point: ScenePointData }) {
+function ScenePoint({ point }: { point: ScenePoint }) {
   const triangleHeight = Math.sqrt(3) / 2;
 
   switch (point.shape) {

@@ -1,14 +1,11 @@
 import type { ComponentProps } from "react";
 import { cn } from "cn";
-import { useAtomValue, useSetAtom } from "jotai";
-import {
-  littleInternetEventAtom,
-  sixthNodeAddedAtom,
-  type LittleInternetEvent,
-} from "./little-internet-events";
+import { useAtomValue } from "jotai";
+import { useScrollerDispatch, type ScrollerEvent } from "../../../components/scroller";
+import { sixthNodeAddedAtom } from "./little-internet-events";
 
 type LittleInternetButtonProps = ComponentProps<"button"> & {
-  event: LittleInternetEvent;
+  event: ScrollerEvent;
 };
 
 export function LittleInternetButton({
@@ -19,8 +16,8 @@ export function LittleInternetButton({
   onClick,
   ...props
 }: LittleInternetButtonProps) {
+  const dispatch = useScrollerDispatch();
   const sixthNodeAdded = useAtomValue(sixthNodeAddedAtom);
-  const sendEvent = useSetAtom(littleInternetEventAtom);
   const completed = event.type === "add" && sixthNodeAdded;
 
   return (
@@ -34,7 +31,7 @@ export function LittleInternetButton({
       disabled={disabled || completed}
       onClick={(eventObject) => {
         onClick?.(eventObject);
-        if (!eventObject.defaultPrevented) sendEvent(event);
+        if (!eventObject.defaultPrevented) dispatch(event);
       }}
     >
       {children}

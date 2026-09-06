@@ -3,6 +3,7 @@ import {
   type ReactNode,
   createContext,
   isValidElement,
+  useCallback,
   useContext,
   useEffect,
   useMemo,
@@ -15,7 +16,16 @@ type Section = {
   index: number;
 };
 
-const ActiveSectionContext = createContext<number | null>(null);
+export type ScrollerEvent = {
+  type: string;
+};
+
+type ScrollerEventListener = (event: ScrollerEvent, index: number) => void;
+
+const ScrollerContext = createContext<{
+  activeSection: number;
+  listeners: Set<ScrollerEventListener>;
+} | null>(null);
 const SectionProvider = createContext<Section | null>(null);
 
 type ScrollerProps = {
@@ -49,15 +59,15 @@ function splitSections(children: ReactNode) {
   );
 }
 
-/** Returns the index of the section currently driving a surrounding Scroller. */
-export function useActiveSection() {
-  const activeSection = useContext(ActiveSectionContext);
+/** Returns the state of a surrounding Scroller. */
+export function useScroller() {
+  const scroller = useContext(ScrollerContext);
 
-  if (activeSection === null) {
-    throw new Error("useActiveSection must be used inside a Scroller figure.");
+  if (scroller === null) {
+    throw new Error("useScroller must be used inside a Scroller figure.");
   }
 
-  return activeSection;
+  return scroller;
 }
 
 export function useSection() {
@@ -88,6 +98,27 @@ function PaperGutter() {
   );
 }
 
+export function useScrollerDispatch() {
+  const { index } = useSection();
+  const { listeners } = useScroller();
+  return useCallback(
+    (event: ScrollerEvent) => {
+      for (const listener of listeners) listener(event, index);
+    },
+    [index],
+  );
+}
+
+export function useScrollerEvent(listener: ScrollerEventListener) {
+  const { listeners } = useScroller();
+  useEffect(() => {
+    listeners.add(listener);
+    return () => {
+      listeners.delete(listener);
+    };
+  }, [listeners, listener]);
+}
+
 /**
  * Presents MDX sections beside a sticky figure. Horizontal rules in children
  * delimit sections, so MDX's `---` syntax can be used as the separator.
@@ -95,7 +126,9 @@ function PaperGutter() {
 export function Scroller({ children, figure }: ScrollerProps) {
   const sections = useMemo(() => splitSections(children), [children]);
   const sectionElements = useRef<Array<HTMLElement | null>>([]);
+
   const [activeSection, setActiveSection] = useState(0);
+  const listenersRef = useRef(new Set<ScrollerEventListener>());
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
   useEffect(() => {
@@ -116,7 +149,8 @@ export function Scroller({ children, figure }: ScrollerProps) {
     };
 
     const requestUpdate = () => {
-      if (frame === undefined) frame = requestAnimationFrame(updateActiveSection);
+      if (frame === undefined)
+        frame = requestAnimationFrame(updateActiveSection);
     };
 
     updateActiveSection();
@@ -131,59 +165,61 @@ export function Scroller({ children, figure }: ScrollerProps) {
   }, [sections.length]);
 
   return (
-    <div
-      className={cn(
-        "[--scroller-gutter-size:32px] [--scroller-padding:calc(var(--spacing)*8)] [--scroller-figure-padding:calc(var(--scroller-padding)*2)]",
-        "grid grid-cols-1 gap-12 lg:grid-cols-[var(--scroller-gutter-size)_minmax(0,1fr)_minmax(0,1fr)_var(--scroller-gutter-size)] lg:gap-0 my-18 first:mt-0 last:mb-0 [&:has(+_[data-scroller])]:mb-0 [[data-scroller]+&]:-mt-2 bg-olive-1 divide-x divide-black/10 shadow w-full max-w-[calc(120ch+var(--scroller-padding)*4+var(--scroller-gutter-size)*2)] mx-auto",
-      )}
-      data-scroller
-      data-full-width
-    >
-      <PaperGutter />
-      <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,60ch)] p-16">
-        {sections.map((section, index) => (
-          <section
-            className="min-h-[45vh] grid gap-y-6 auto-rows-min col-start-2"
-            // biome-ignore lint/suspicious/noArrayIndexKey: <explanation>
-            key={index}
-            ref={(element) => {
-              sectionElements.current[index] = element;
-            }}
-          >
-            <SectionProvider value={{ index }}>{section}</SectionProvider>
-          </section>
-        ))}
-      </div>
-      <figure
-        className="min-w-0 p-(--scroller-padding) pb-0"
-        style={{ containerType: "inline-size" }}
+    <ScrollerContext value={{ activeSection, listeners: listenersRef.current }}>
+      <div
+        className={cn(
+          "[--scroller-gutter-size:32px] [--scroller-padding:calc(var(--spacing)*8)] [--scroller-figure-padding:calc(var(--scroller-padding)*2)]",
+          "grid grid-cols-1 gap-12 lg:grid-cols-[var(--scroller-gutter-size)_minmax(0,1fr)_minmax(0,1fr)_var(--scroller-gutter-size)] lg:gap-0 my-18 first:mt-0 last:mb-0 [&:has(+_[data-scroller])]:mb-0 [[data-scroller]+&]:-mt-2 bg-olive-1 divide-x divide-black/10 shadow w-full max-w-[calc(120ch+var(--scroller-padding)*4+var(--scroller-gutter-size)*2)] mx-auto",
+        )}
+        data-scroller
+        data-full-width
       >
-        <div className="[--grid-size:12.5cqw] xl:[--grid-size:6.25cqw] h-full max-h-screen sticky -top-px">
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute -inset-px p-px"
-            style={{
-              // Give edge dots room to paint while keeping the original grid origin.
-              backgroundOrigin: "content-box",
-              backgroundClip: "border-box",
-              // Center each dotted line on the SVG's grid coordinates.
-              // Offset centered tiles by half a cell so lines start at zero.
-              backgroundImage: [
-                "radial-gradient(circle at center, rgb(0 0 0 / 0.15) 0.5px, transparent 1px)",
-                "radial-gradient(circle at center, rgb(0 0 0 / 0.15) 0.5px, transparent 1px)",
-              ].join(", "),
-              backgroundSize: "var(--grid-size) 4px, 4px var(--grid-size)",
-              backgroundPosition:
-                "calc(var(--grid-size) / -2) 0px, 0px calc(var(--grid-size) / -2)",
-              backgroundRepeat: "repeat, repeat",
-            }}
-          />
-          <div className="sticky h-fit top-[calc(var(--grid-size)*3)]">
-            <ActiveSectionContext value={activeSection}>{figure}</ActiveSectionContext>
-          </div>
+        <PaperGutter />
+        <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,60ch)] p-16">
+          {sections.map((section, index) => (
+            <section
+              className="min-h-[45vh] grid gap-y-6 auto-rows-min col-start-2"
+              // biome-ignore lint/suspicious/noArrayIndexKey: <explanation>
+              key={index}
+              ref={(element) => {
+                sectionElements.current[index] = element;
+              }}
+            >
+              <SectionProvider value={{ index }}>{section}</SectionProvider>
+            </section>
+          ))}
         </div>
-      </figure>
-      <PaperGutter />
-    </div>
+        <figure
+          className="min-w-0 p-(--scroller-padding) pb-0"
+          style={{ containerType: "inline-size" }}
+        >
+          <div className="[--grid-size:12.5cqw] xl:[--grid-size:6.25cqw] h-full max-h-screen sticky -top-px">
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute -inset-px p-px"
+              style={{
+                // Give edge dots room to paint while keeping the original grid origin.
+                backgroundOrigin: "content-box",
+                backgroundClip: "border-box",
+                // Center each dotted line on the SVG's grid coordinates.
+                // Offset centered tiles by half a cell so lines start at zero.
+                backgroundImage: [
+                  "radial-gradient(circle at center, rgb(0 0 0 / 0.15) 0.5px, transparent 1px)",
+                  "radial-gradient(circle at center, rgb(0 0 0 / 0.15) 0.5px, transparent 1px)",
+                ].join(", "),
+                backgroundSize: "var(--grid-size) 4px, 4px var(--grid-size)",
+                backgroundPosition:
+                  "calc(var(--grid-size) / -2) 0px, 0px calc(var(--grid-size) / -2)",
+                backgroundRepeat: "repeat, repeat",
+              }}
+            />
+            <div className="sticky h-fit top-[calc(var(--grid-size)*3)]">
+              {figure}
+            </div>
+          </div>
+        </figure>
+        <PaperGutter />
+      </div>
+    </ScrollerContext>
   );
 }
