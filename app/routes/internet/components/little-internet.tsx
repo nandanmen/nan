@@ -49,6 +49,13 @@ const littleInternetVisual: Visual = {
   scenes,
 };
 
+const SWIFT_TRANSITION = {
+  type: "spring",
+  stiffness: 280,
+  damping: 18,
+  mass: 0.3,
+} as const;
+
 export function LittleInternet() {
   const scene = useVisual(littleInternetVisual);
   const links = scene.flatMap((from, index) =>
@@ -65,12 +72,16 @@ export function LittleInternet() {
       >
         <g stroke="currentColor" className="text-gray-7">
           {links.map(({ from, to }) => (
-            <line
+            <motion.line
               key={`${from.id}-${to.id}`}
-              x1={from.x}
-              y1={from.y}
-              x2={to.x}
-              y2={to.y}
+              animate={{
+                x1: from.x,
+                y1: from.y,
+                x2: to.x,
+                y2: to.y,
+              }}
+              initial={false}
+              transition={SWIFT_TRANSITION}
               vectorEffect="non-scaling-stroke"
               strokeWidth="6"
             />
@@ -99,7 +110,11 @@ export function LittleInternet() {
 
 function ScenePoint({ point }: { point: ScenePoint }) {
   return (
-    <motion.g animate={{ x: point.x, y: point.y }} initial={false}>
+    <motion.g
+      animate={{ x: point.x, y: point.y }}
+      initial={false}
+      transition={SWIFT_TRANSITION}
+    >
       <Shape type={point.shape} className={point.className} />
     </motion.g>
   );
@@ -172,35 +187,43 @@ function VertexLabel({
 }) {
   return (
     <g>
-      <line
-        x1={x}
-        y1={y}
-        x2={targetX}
-        y2={targetY}
+      <motion.line
+        animate={{
+          x1: x,
+          y1: y,
+          x2: targetX,
+          y2: targetY,
+        }}
+        initial={false}
+        transition={SWIFT_TRANSITION}
         className="text-gray-11"
         stroke="currentColor"
         strokeWidth="1.5"
         vectorEffect="non-scaling-stroke"
       />
-      <rect
-        x={x - 0.45}
-        y={y - 0.45}
-        width="0.9"
-        height="0.9"
-        rx="0.1"
-        className="fill-gray-12"
-      />
-      <text
-        x={x}
-        y={y}
-        className="fill-gray-1 font-sans"
-        fontSize="0.55"
-        fontWeight="600"
-        textAnchor="middle"
-        dominantBaseline="central"
+      <motion.g
+        animate={{ x, y }}
+        initial={false}
+        transition={SWIFT_TRANSITION}
       >
-        {label}
-      </text>
+        <rect
+          x="-0.45"
+          y="-0.45"
+          width="0.9"
+          height="0.9"
+          rx="0.1"
+          className="fill-gray-12"
+        />
+        <text
+          className="fill-gray-1 font-sans"
+          fontSize="0.55"
+          fontWeight="600"
+          textAnchor="middle"
+          dominantBaseline="central"
+        >
+          {label}
+        </text>
+      </motion.g>
     </g>
   );
 }
