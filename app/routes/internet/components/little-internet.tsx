@@ -4,6 +4,7 @@ import {
   type ScenePoint,
   type Visual,
 } from "../../../hooks/use-visual";
+import { motion } from "motion/react";
 
 const scenes: SceneDefinition[] = [
   {
@@ -25,7 +26,12 @@ const scenes: SceneDefinition[] = [
     },
     on: {
       add: {
-        six: { x: 8, y: 12, label: { x: 8, y: 13.5 } },
+        one: { x: 8, y: 3, label: { x: 8, y: 1.5 } },
+        four: { x: 11, y: 5, label: { x: 12.5, y: 5 } },
+        three: { x: 11, y: 9, label: { x: 12.5, y: 10.5 } },
+        six: { x: 8, y: 11, label: { x: 8, y: 12.5 } },
+        two: { x: 5, y: 9, label: { x: 3.5, y: 10.5 } },
+        five: { x: 5, y: 5, label: { x: 3.5, y: 5 } },
       },
     },
   },
@@ -45,7 +51,9 @@ const littleInternetVisual: Visual = {
 
 export function LittleInternet() {
   const scene = useVisual(littleInternetVisual);
-  const links = scene.flatMap((from, index) => scene.slice(index + 1).map((to) => ({ from, to })));
+  const links = scene.flatMap((from, index) =>
+    scene.slice(index + 1).map((to) => ({ from, to })),
+  );
   return (
     <div className="w-full">
       <svg
@@ -90,15 +98,26 @@ export function LittleInternet() {
 }
 
 function ScenePoint({ point }: { point: ScenePoint }) {
-  const triangleHeight = Math.sqrt(3) / 2;
+  return (
+    <motion.g animate={{ x: point.x, y: point.y }} initial={false}>
+      <Shape type={point.shape} className={point.className} />
+    </motion.g>
+  );
+}
 
-  switch (point.shape) {
+function Shape({
+  type,
+  className,
+}: {
+  type: ScenePoint["shape"];
+  className?: string;
+}) {
+  const triangleHeight = Math.sqrt(3) / 2;
+  switch (type) {
     case "circle":
       return (
         <circle
-          cx={point.x}
-          cy={point.y}
-          className={`${point.className} stroke-current`}
+          className={`${className} stroke-current`}
           strokeWidth="3"
           vectorEffect="non-scaling-stroke"
           r="0.4"
@@ -107,9 +126,9 @@ function ScenePoint({ point }: { point: ScenePoint }) {
     case "square":
       return (
         <rect
-          x={point.x - 0.4}
-          y={point.y - 0.4}
-          className={`${point.className} stroke-current`}
+          x="-0.4"
+          y="-0.4"
+          className={`${className} stroke-current`}
           strokeWidth="3"
           vectorEffect="non-scaling-stroke"
           width="0.8"
@@ -119,9 +138,8 @@ function ScenePoint({ point }: { point: ScenePoint }) {
     case "triangle":
       return (
         <polygon
-          transform={`translate(${point.x} ${point.y})`}
           points={`0,${(-2 * triangleHeight) / 3} 0.5,${triangleHeight / 3} -0.5,${triangleHeight / 3}`}
-          className={`${point.className} stroke-current`}
+          className={`${className} stroke-current`}
           strokeWidth="3"
           strokeLinejoin="round"
           vectorEffect="non-scaling-stroke"
@@ -130,9 +148,8 @@ function ScenePoint({ point }: { point: ScenePoint }) {
     case "diamond":
       return (
         <polygon
-          transform={`translate(${point.x} ${point.y})`}
           points="0,-0.6 0.48,0 0,0.6 -0.48,0"
-          className={`${point.className} stroke-current`}
+          className={`${className} stroke-current`}
           strokeWidth="3"
           vectorEffect="non-scaling-stroke"
         />
@@ -165,7 +182,14 @@ function VertexLabel({
         strokeWidth="1.5"
         vectorEffect="non-scaling-stroke"
       />
-      <rect x={x - 0.45} y={y - 0.45} width="0.9" height="0.9" rx="0.1" className="fill-gray-12" />
+      <rect
+        x={x - 0.45}
+        y={y - 0.45}
+        width="0.9"
+        height="0.9"
+        rx="0.1"
+        className="fill-gray-12"
+      />
       <text
         x={x}
         y={y}
