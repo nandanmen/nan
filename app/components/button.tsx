@@ -9,11 +9,17 @@ export type ButtonProps = {
   shape?: "square";
 };
 
-export function Button({ className, disabled, onClick, children, shape }: ButtonProps) {
+export function Button({
+  className,
+  disabled,
+  onClick,
+  children,
+  shape,
+}: ButtonProps) {
   return (
     <button
       className={cn(
-        "h-full flex items-center border-b-2 border-gray-4 bg-white ring ring-black/10 shadow rounded not-disabled:hover:bg-gray-2 disabled:cursor-not-allowed disabled:text-gray-8",
+        "w-fit flex items-center border-b-2 border-gray-4 bg-white ring ring-black/10 shadow rounded not-disabled:hover:bg-gray-2 disabled:cursor-not-allowed disabled:text-gray-8 h-10",
         shape === "square" ? "aspect-square justify-center" : "px-3",
         className,
       )}

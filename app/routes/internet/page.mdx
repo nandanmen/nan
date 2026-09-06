@@ -8,9 +8,7 @@ One way to transmit data between two computers is to have them be physically con
 
 To send data to each other, they only need to send it through the physical connection:
 
-```
-send button
-```
+<ScrollerButton onClick={{ type: "send-packet", from: "one", to: "two" }}>Send data</ScrollerButton>
 
 ---
 
@@ -18,9 +16,7 @@ Let's now add a third computer to the mix. Now, each computer has two links—on
 
 For a computer to send data to another, it has to know which link is connected to which computer. For that, each computer needs a **label**; let's use 1, 2, and 3 for now.
 
-```
-send button
-```
+<ScrollerButton onClick={{ type: "send-packet", from: "one", to: "two" }}>Send data</ScrollerButton>
 
 ---
 
