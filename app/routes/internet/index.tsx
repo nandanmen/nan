@@ -1,5 +1,10 @@
 import type { ReactNode } from "react";
+import { Button } from "../../components/button";
 import { CodeBlock } from "./code-block";
+import { Icon } from "../../components/icon";
+import { ScrollerButton } from "../../components/scroller-button";
+import { Scroller } from "../../components/scroller";
+import { Toolbar } from "../../components/toolbar";
 import InternetContent from "./page.mdx";
 import { InterruptedWorldMap } from "./world-map";
 import { Provider } from "jotai";
@@ -42,6 +47,11 @@ export default function Internet() {
           <Provider>
             <InternetContent
               components={{
+                Button,
+                Icon,
+                Scroller,
+                ScrollerButton,
+                Toolbar,
                 h2: ({ children }: { children: ReactNode }) => (
                   <h2 className="text-2xl font-medium">{children}</h2>
                 ),
