@@ -1,15 +1,17 @@
 type IconProps = {
   type: "reset";
+  size?: number;
 };
 
-export function Icon({ type }: IconProps) {
+export function Icon({ type, size = 20 }: IconProps) {
   switch (type) {
     case "reset":
       return (
         <svg
           aria-hidden="true"
           xmlns="http://www.w3.org/2000/svg"
-          width="20"
+          width={size}
+          height={size}
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"
