@@ -13,7 +13,16 @@ export type Point = {
   label?: { x: number; y: number };
 };
 
-export type PointMap = Record<string, Point>;
+export type PointMap = Record<string, Point | null>;
+
+function applyPoints(current: Record<string, Point>, changes: PointMap): Record<string, Point> {
+  const next = { ...current };
+  for (const [id, point] of Object.entries(changes)) {
+    if (point === null) delete next[id];
+    else next[id] = point;
+  }
+  return next;
+}
 
 export type SceneDefinition =
   | PointMap
@@ -42,7 +51,10 @@ export type ScenePoint = {
 
 export type Scene = ScenePoint[];
 
-function toScene(points: PointMap, definitions: Record<string, PointDefinition>): Scene {
+function toScene(
+  points: Record<string, Point>,
+  definitions: Record<string, PointDefinition>,
+): Scene {
   return Object.entries(points).map(([id, point]) => {
     const visualPoint = definitions[id];
     if (!visualPoint) {
@@ -90,7 +102,7 @@ function assertFirstScene(visual: Visual): SceneDefinition {
 
 export function useVisual(visual: Visual): Scene {
   const firstScene = resolveScene(assertFirstScene(visual));
-  const [points, setPoints] = useState<PointMap>(firstScene.points);
+  const [points, setPoints] = useState(() => applyPoints({}, firstScene.points));
   const transitions = useRef<Record<string, SceneDefinition>>(firstScene.transitions);
   const { activeSection, setAvailableEvents } = useScroller();
 
@@ -98,7 +110,7 @@ export function useVisual(visual: Visual): Scene {
     const nextScene = visual.scenes.at(activeSection);
     if (!nextScene) return;
     const next = resolveScene(nextScene);
-    setPoints(next.points);
+    setPoints(applyPoints({}, next.points));
     transitions.current = next.transitions;
     setAvailableEvents({ index: activeSection, types: Object.keys(next.transitions) });
     return () => setAvailableEvents(null);
@@ -110,7 +122,7 @@ export function useVisual(visual: Visual): Scene {
     const nextScene = resolveScene(transitions.current[event.type]);
     transitions.current = nextScene.transitions;
     setAvailableEvents({ index: activeSection, types: Object.keys(nextScene.transitions) });
-    setPoints((currentPoints) => ({ ...currentPoints, ...nextScene.points }));
+    setPoints((currentPoints) => applyPoints(currentPoints, nextScene.points));
   });
 
   return toScene(points, visual.points);

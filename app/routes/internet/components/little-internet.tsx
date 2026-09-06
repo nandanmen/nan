@@ -6,6 +6,51 @@ import {
 } from "../../../hooks/use-visual";
 import { motion } from "motion/react";
 
+const pentagonScene: SceneDefinition = {
+  initial: {
+    one: { x: 8, y: 3, label: { x: 8, y: 1.5 } },
+    four: { x: 11, y: 5, label: { x: 12.5, y: 5 } },
+    three: { x: 10, y: 9, label: { x: 11.5, y: 10.5 } },
+    two: { x: 6, y: 9, label: { x: 4.5, y: 10.5 } },
+    five: { x: 5, y: 5, label: { x: 3.5, y: 5 } },
+    six: null,
+    seven: null,
+  },
+  on: {
+    add: {
+      initial: {
+        one: { x: 8, y: 3, label: { x: 8, y: 1.5 } },
+        four: { x: 11, y: 5, label: { x: 12.5, y: 5 } },
+        three: { x: 11, y: 9, label: { x: 12.5, y: 10.5 } },
+        six: { x: 8, y: 11, label: { x: 8, y: 12.5 } },
+        two: { x: 5, y: 9, label: { x: 3.5, y: 10.5 } },
+        five: { x: 5, y: 5, label: { x: 3.5, y: 5 } },
+      },
+      on: {
+        get reset(): SceneDefinition {
+          return pentagonScene;
+        },
+        add: {
+          initial: {
+            one: { x: 8, y: 3, label: { x: 8, y: 1.5 } },
+            four: { x: 11, y: 4.5, label: { x: 12.5, y: 4 } },
+            three: { x: 12, y: 8, label: { x: 13.5, y: 8.5 } },
+            six: { x: 10, y: 11, label: { x: 10.5, y: 12.5 } },
+            seven: { x: 6, y: 11, label: { x: 5.5, y: 12.5 } },
+            two: { x: 4, y: 8, label: { x: 2.5, y: 8.5 } },
+            five: { x: 5, y: 4.5, label: { x: 3.5, y: 4 } },
+          },
+          on: {
+            get reset(): SceneDefinition {
+              return pentagonScene;
+            },
+          },
+        },
+      },
+    },
+  },
+};
+
 const scenes: SceneDefinition[] = [
   {
     one: { x: 8, y: 3 },
@@ -16,25 +61,7 @@ const scenes: SceneDefinition[] = [
     two: { x: 5, y: 9, label: { x: 3.5, y: 10.5 } },
     three: { x: 11, y: 9, label: { x: 12.5, y: 10.5 } },
   },
-  {
-    initial: {
-      one: { x: 8, y: 3, label: { x: 8, y: 1.5 } },
-      four: { x: 11, y: 5, label: { x: 12.5, y: 5 } },
-      three: { x: 10, y: 9, label: { x: 11.5, y: 10.5 } },
-      two: { x: 6, y: 9, label: { x: 4.5, y: 10.5 } },
-      five: { x: 5, y: 5, label: { x: 3.5, y: 5 } },
-    },
-    on: {
-      add: {
-        one: { x: 8, y: 3, label: { x: 8, y: 1.5 } },
-        four: { x: 11, y: 5, label: { x: 12.5, y: 5 } },
-        three: { x: 11, y: 9, label: { x: 12.5, y: 10.5 } },
-        six: { x: 8, y: 11, label: { x: 8, y: 12.5 } },
-        two: { x: 5, y: 9, label: { x: 3.5, y: 10.5 } },
-        five: { x: 5, y: 5, label: { x: 3.5, y: 5 } },
-      },
-    },
-  },
+  pentagonScene,
 ];
 
 const littleInternetVisual: Visual = {
@@ -45,6 +72,7 @@ const littleInternetVisual: Visual = {
     four: { shape: "circle", className: "fill-cyan-9", label: "4" },
     five: { shape: "diamond", className: "fill-green-9", label: "5" },
     six: { shape: "square", className: "fill-blue-9", label: "6" },
+    seven: { shape: "triangle", className: "fill-orange-9", label: "7" },
   },
   scenes,
 };
@@ -58,9 +86,7 @@ const SWIFT_TRANSITION = {
 
 export function LittleInternet() {
   const scene = useVisual(littleInternetVisual);
-  const links = scene.flatMap((from, index) =>
-    scene.slice(index + 1).map((to) => ({ from, to })),
-  );
+  const links = scene.flatMap((from, index) => scene.slice(index + 1).map((to) => ({ from, to })));
   return (
     <div className="w-full">
       <svg
@@ -110,23 +136,13 @@ export function LittleInternet() {
 
 function ScenePoint({ point }: { point: ScenePoint }) {
   return (
-    <motion.g
-      animate={{ x: point.x, y: point.y }}
-      initial={false}
-      transition={SWIFT_TRANSITION}
-    >
+    <motion.g animate={{ x: point.x, y: point.y }} initial={false} transition={SWIFT_TRANSITION}>
       <Shape type={point.shape} className={point.className} />
     </motion.g>
   );
 }
 
-function Shape({
-  type,
-  className,
-}: {
-  type: ScenePoint["shape"];
-  className?: string;
-}) {
+function Shape({ type, className }: { type: ScenePoint["shape"]; className?: string }) {
   const triangleHeight = Math.sqrt(3) / 2;
   switch (type) {
     case "circle":
@@ -201,19 +217,8 @@ function VertexLabel({
         strokeWidth="1.5"
         vectorEffect="non-scaling-stroke"
       />
-      <motion.g
-        animate={{ x, y }}
-        initial={false}
-        transition={SWIFT_TRANSITION}
-      >
-        <rect
-          x="-0.45"
-          y="-0.45"
-          width="0.9"
-          height="0.9"
-          rx="0.1"
-          className="fill-gray-12"
-        />
+      <motion.g animate={{ x, y }} initial={false} transition={SWIFT_TRANSITION}>
+        <rect x="-0.45" y="-0.45" width="0.9" height="0.9" rx="0.1" className="fill-gray-12" />
         <text
           className="fill-gray-1 font-sans"
           fontSize="0.55"
