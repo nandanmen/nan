@@ -92,7 +92,7 @@ export function useVisual(visual: Visual): Scene {
   const firstScene = resolveScene(assertFirstScene(visual));
   const [points, setPoints] = useState<PointMap>(firstScene.points);
   const transitions = useRef<Record<string, SceneDefinition>>(firstScene.transitions);
-  const { activeSection } = useScroller();
+  const { activeSection, setAvailableEvents } = useScroller();
 
   useEffect(() => {
     const nextScene = visual.scenes.at(activeSection);
@@ -100,13 +100,16 @@ export function useVisual(visual: Visual): Scene {
     const next = resolveScene(nextScene);
     setPoints(next.points);
     transitions.current = next.transitions;
-  }, [visual, activeSection]);
+    setAvailableEvents({ index: activeSection, types: Object.keys(next.transitions) });
+    return () => setAvailableEvents(null);
+  }, [visual, activeSection, setAvailableEvents]);
 
   useScrollerEvent((event, index) => {
     if (index !== activeSection) return;
     if (!Object.hasOwn(transitions.current, event.type)) return;
     const nextScene = resolveScene(transitions.current[event.type]);
     transitions.current = nextScene.transitions;
+    setAvailableEvents({ index: activeSection, types: Object.keys(nextScene.transitions) });
     setPoints((currentPoints) => ({ ...currentPoints, ...nextScene.points }));
   });
 

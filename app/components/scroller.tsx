@@ -1,6 +1,8 @@
 import {
   Children,
   type ReactNode,
+  type Dispatch,
+  type SetStateAction,
   createContext,
   isValidElement,
   useCallback,
@@ -22,9 +24,13 @@ export type ScrollerEvent = {
 
 type ScrollerEventListener = (event: ScrollerEvent, index: number) => void;
 
+type AvailableEvents = { index: number; types: string[] } | null;
+
 const ScrollerContext = createContext<{
   activeSection: number;
   listeners: Set<ScrollerEventListener>;
+  availableEvents: AvailableEvents;
+  setAvailableEvents: Dispatch<SetStateAction<AvailableEvents>>;
 } | null>(null);
 const SectionProvider = createContext<Section | null>(null);
 
@@ -109,6 +115,16 @@ export function useScrollerDispatch() {
   );
 }
 
+export function useScrollerCanSend(event: ScrollerEvent) {
+  const { index } = useSection();
+  const { activeSection, availableEvents } = useScroller();
+  return (
+    index === activeSection &&
+    availableEvents?.index === index &&
+    availableEvents.types.includes(event.type)
+  );
+}
+
 export function useScrollerEvent(listener: ScrollerEventListener) {
   const { listeners } = useScroller();
   useEffect(() => {
@@ -128,6 +144,7 @@ export function Scroller({ children, figure }: ScrollerProps) {
   const sectionElements = useRef<Array<HTMLElement | null>>([]);
 
   const [activeSection, setActiveSection] = useState(0);
+  const [availableEvents, setAvailableEvents] = useState<AvailableEvents>(null);
   const listenersRef = useRef(new Set<ScrollerEventListener>());
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
@@ -165,7 +182,14 @@ export function Scroller({ children, figure }: ScrollerProps) {
   }, [sections.length]);
 
   return (
-    <ScrollerContext value={{ activeSection, listeners: listenersRef.current }}>
+    <ScrollerContext
+      value={{
+        activeSection,
+        listeners: listenersRef.current,
+        availableEvents,
+        setAvailableEvents,
+      }}
+    >
       <div
         className={cn(
           "[--scroller-gutter-size:32px] [--scroller-padding:calc(var(--spacing)*8)] [--scroller-figure-padding:calc(var(--scroller-padding)*2)]",
