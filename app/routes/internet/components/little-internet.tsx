@@ -5,6 +5,7 @@ import {
   type Visual,
 } from "../../../hooks/use-visual";
 import { motion } from "motion/react";
+import { useLayoutEffect, useRef } from "react";
 
 const pentagonScene: SceneDefinition = {
   initial: {
@@ -72,7 +73,7 @@ const littleInternetVisual: Visual = {
     four: { shape: "circle", className: "fill-cyan-9", label: "4" },
     five: { shape: "diamond", className: "fill-green-9", label: "5" },
     six: { shape: "square", className: "fill-blue-9", label: "6" },
-    seven: { shape: "triangle", className: "fill-orange-9", label: "7" },
+    seven: { shape: "triangle", className: "fill-cyan-9", label: "7" },
   },
   scenes,
 };
@@ -86,6 +87,10 @@ const SWIFT_TRANSITION = {
 
 export function LittleInternet() {
   const scene = useVisual(littleInternetVisual);
+  const previousPoints = useRef(new Map<string, ScenePoint>());
+  useLayoutEffect(() => {
+    previousPoints.current = new Map(scene.map((point) => [point.id, point]));
+  }, [scene]);
   const links = scene.flatMap((from, index) => scene.slice(index + 1).map((to) => ({ from, to })));
   return (
     <div className="w-full">
@@ -106,7 +111,12 @@ export function LittleInternet() {
                 x2: to.x,
                 y2: to.y,
               }}
-              initial={false}
+              initial={{
+                x1: previousPoints.current.get(from.id)?.x ?? from.x,
+                y1: previousPoints.current.get(from.id)?.y ?? from.y,
+                x2: previousPoints.current.get(to.id)?.x ?? to.x,
+                y2: previousPoints.current.get(to.id)?.y ?? to.y,
+              }}
               transition={SWIFT_TRANSITION}
               vectorEffect="non-scaling-stroke"
               strokeWidth="6"
