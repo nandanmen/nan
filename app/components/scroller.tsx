@@ -166,8 +166,7 @@ export function Scroller({ children, figure }: ScrollerProps) {
     };
 
     const requestUpdate = () => {
-      if (frame === undefined)
-        frame = requestAnimationFrame(updateActiveSection);
+      if (frame === undefined) frame = requestAnimationFrame(updateActiveSection);
     };
 
     updateActiveSection();
@@ -237,9 +236,7 @@ export function Scroller({ children, figure }: ScrollerProps) {
                 backgroundRepeat: "repeat, repeat",
               }}
             />
-            <div className="sticky h-fit top-[calc(var(--grid-size)*3)]">
-              {figure}
-            </div>
+            <div className="sticky h-fit top-[calc(var(--grid-size)*3)]">{figure}</div>
           </div>
         </figure>
         <PaperGutter />

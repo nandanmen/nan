@@ -14,200 +14,198 @@
 @import "@radix-ui/colors/cyan-dark.css";
 
 @font-face {
-    font-family: "PP Editorial New";
-    font-style: normal;
-    font-weight: 400;
-    src: url("./fonts/pp-editorial-new/regular.woff2") format("woff2");
+  font-family: "PP Editorial New";
+  font-style: normal;
+  font-weight: 400;
+  src: url("./fonts/pp-editorial-new/regular.woff2") format("woff2");
 }
 
 @font-face {
-    font-family: "PP Editorial New";
-    font-style: normal;
-    font-weight: 700;
-    src: url("./fonts/pp-editorial-new/bold.woff2") format("woff2");
+  font-family: "PP Editorial New";
+  font-style: normal;
+  font-weight: 700;
+  src: url("./fonts/pp-editorial-new/bold.woff2") format("woff2");
 }
 
 @font-face {
-    font-family: "Sans";
-    font-style: normal;
-    font-weight: 400;
-    src: url("./fonts/sans/regular.woff2") format("woff2");
+  font-family: "Sans";
+  font-style: normal;
+  font-weight: 400;
+  src: url("./fonts/sans/regular.woff2") format("woff2");
 }
 
 @font-face {
-    font-family: "Sans";
-    font-style: italic;
-    font-weight: 400;
-    src: url("./fonts/sans/regular-italic.woff2") format("woff2");
+  font-family: "Sans";
+  font-style: italic;
+  font-weight: 400;
+  src: url("./fonts/sans/regular-italic.woff2") format("woff2");
 }
 
 @font-face {
-    font-family: "Sans";
-    font-style: normal;
-    font-weight: 500;
-    src: url("./fonts/sans/medium.woff2") format("woff2");
+  font-family: "Sans";
+  font-style: normal;
+  font-weight: 500;
+  src: url("./fonts/sans/medium.woff2") format("woff2");
 }
 
 @font-face {
-    font-family: "Sans";
-    font-style: italic;
-    font-weight: 500;
-    src: url("./fonts/sans/medium-italic.woff2") format("woff2");
+  font-family: "Sans";
+  font-style: italic;
+  font-weight: 500;
+  src: url("./fonts/sans/medium-italic.woff2") format("woff2");
 }
 
 @font-face {
-    font-family: "Sans";
-    font-style: normal;
-    font-weight: 600;
-    src: url("./fonts/sans/semibold.woff2") format("woff2");
+  font-family: "Sans";
+  font-style: normal;
+  font-weight: 600;
+  src: url("./fonts/sans/semibold.woff2") format("woff2");
 }
 
 @font-face {
-    font-family: "Sans";
-    font-style: italic;
-    font-weight: 600;
-    src: url("./fonts/sans/semibold-italic.woff2") format("woff2");
+  font-family: "Sans";
+  font-style: italic;
+  font-weight: 600;
+  src: url("./fonts/sans/semibold-italic.woff2") format("woff2");
 }
 
 @font-face {
-    font-family: "Sans";
-    font-style: normal;
-    font-weight: 700;
-    src: url("./fonts/sans/bold.woff2") format("woff2");
+  font-family: "Sans";
+  font-style: normal;
+  font-weight: 700;
+  src: url("./fonts/sans/bold.woff2") format("woff2");
 }
 
 @font-face {
-    font-family: "Sans";
-    font-style: italic;
-    font-weight: 700;
-    src: url("./fonts/sans/bold-italic.woff2") format("woff2");
+  font-family: "Sans";
+  font-style: italic;
+  font-weight: 700;
+  src: url("./fonts/sans/bold-italic.woff2") format("woff2");
 }
 
 @font-face {
-    font-family: "Commit Mono";
-    font-style: normal;
-    font-weight: 400;
-    src: url("./fonts/commit-mono/CommitMono-400-Regular.otf")
-        format("opentype");
+  font-family: "Commit Mono";
+  font-style: normal;
+  font-weight: 400;
+  src: url("./fonts/commit-mono/CommitMono-400-Regular.otf") format("opentype");
 }
 
 @font-face {
-    font-family: "Commit Mono";
-    font-style: italic;
-    font-weight: 400;
-    src: url("./fonts/commit-mono/CommitMono-400-Italic.otf") format("opentype");
+  font-family: "Commit Mono";
+  font-style: italic;
+  font-weight: 400;
+  src: url("./fonts/commit-mono/CommitMono-400-Italic.otf") format("opentype");
 }
 
 @font-face {
-    font-family: "Commit Mono";
-    font-style: normal;
-    font-weight: 700;
-    src: url("./fonts/commit-mono/CommitMono-700-Regular.otf")
-        format("opentype");
+  font-family: "Commit Mono";
+  font-style: normal;
+  font-weight: 700;
+  src: url("./fonts/commit-mono/CommitMono-700-Regular.otf") format("opentype");
 }
 
 @font-face {
-    font-family: "Commit Mono";
-    font-style: italic;
-    font-weight: 700;
-    src: url("./fonts/commit-mono/CommitMono-700-Italic.otf") format("opentype");
+  font-family: "Commit Mono";
+  font-style: italic;
+  font-weight: 700;
+  src: url("./fonts/commit-mono/CommitMono-700-Italic.otf") format("opentype");
 }
 
 @theme {
-    --font-serif: "PP Editorial New", ui-serif, serif;
-    --font-sans: "Sans", ui-sans-serif, system-ui, sans-serif;
-    --font-mono: "Commit Mono", ui-monospace, monospace;
+  --font-serif: "PP Editorial New", ui-serif, serif;
+  --font-sans: "Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Commit Mono", ui-monospace, monospace;
 }
 
 @theme inline {
-    --color-olive-1: var(--olive-1);
-    --color-olive-2: var(--olive-2);
-    --color-olive-3: var(--olive-3);
-    --color-olive-4: var(--olive-4);
-    --color-olive-5: var(--olive-5);
-    --color-olive-6: var(--olive-6);
-    --color-olive-7: var(--olive-7);
-    --color-olive-8: var(--olive-8);
-    --color-olive-9: var(--olive-9);
-    --color-olive-10: var(--olive-10);
-    --color-olive-11: var(--olive-11);
-    --color-olive-12: var(--olive-12);
+  --color-olive-1: var(--olive-1);
+  --color-olive-2: var(--olive-2);
+  --color-olive-3: var(--olive-3);
+  --color-olive-4: var(--olive-4);
+  --color-olive-5: var(--olive-5);
+  --color-olive-6: var(--olive-6);
+  --color-olive-7: var(--olive-7);
+  --color-olive-8: var(--olive-8);
+  --color-olive-9: var(--olive-9);
+  --color-olive-10: var(--olive-10);
+  --color-olive-11: var(--olive-11);
+  --color-olive-12: var(--olive-12);
 
-    --color-gray-1: var(--gray-1);
-    --color-gray-2: var(--gray-2);
-    --color-gray-3: var(--gray-3);
-    --color-gray-4: var(--gray-4);
-    --color-gray-5: var(--gray-5);
-    --color-gray-6: var(--gray-6);
-    --color-gray-7: var(--gray-7);
-    --color-gray-8: var(--gray-8);
-    --color-gray-9: var(--gray-9);
-    --color-gray-10: var(--gray-10);
-    --color-gray-11: var(--gray-11);
-    --color-gray-12: var(--gray-12);
+  --color-gray-1: var(--gray-1);
+  --color-gray-2: var(--gray-2);
+  --color-gray-3: var(--gray-3);
+  --color-gray-4: var(--gray-4);
+  --color-gray-5: var(--gray-5);
+  --color-gray-6: var(--gray-6);
+  --color-gray-7: var(--gray-7);
+  --color-gray-8: var(--gray-8);
+  --color-gray-9: var(--gray-9);
+  --color-gray-10: var(--gray-10);
+  --color-gray-11: var(--gray-11);
+  --color-gray-12: var(--gray-12);
 
-    --color-blue-1: var(--blue-1);
-    --color-blue-2: var(--blue-2);
-    --color-blue-3: var(--blue-3);
-    --color-blue-4: var(--blue-4);
-    --color-blue-5: var(--blue-5);
-    --color-blue-6: var(--blue-6);
-    --color-blue-7: var(--blue-7);
-    --color-blue-8: var(--blue-8);
-    --color-blue-9: var(--blue-9);
-    --color-blue-10: var(--blue-10);
-    --color-blue-11: var(--blue-11);
-    --color-blue-12: var(--blue-12);
+  --color-blue-1: var(--blue-1);
+  --color-blue-2: var(--blue-2);
+  --color-blue-3: var(--blue-3);
+  --color-blue-4: var(--blue-4);
+  --color-blue-5: var(--blue-5);
+  --color-blue-6: var(--blue-6);
+  --color-blue-7: var(--blue-7);
+  --color-blue-8: var(--blue-8);
+  --color-blue-9: var(--blue-9);
+  --color-blue-10: var(--blue-10);
+  --color-blue-11: var(--blue-11);
+  --color-blue-12: var(--blue-12);
 
-    --color-green-1: var(--green-1);
-    --color-green-2: var(--green-2);
-    --color-green-3: var(--green-3);
-    --color-green-4: var(--green-4);
-    --color-green-5: var(--green-5);
-    --color-green-6: var(--green-6);
-    --color-green-7: var(--green-7);
-    --color-green-8: var(--green-8);
-    --color-green-9: var(--green-9);
-    --color-green-10: var(--green-10);
-    --color-green-11: var(--green-11);
-    --color-green-12: var(--green-12);
+  --color-green-1: var(--green-1);
+  --color-green-2: var(--green-2);
+  --color-green-3: var(--green-3);
+  --color-green-4: var(--green-4);
+  --color-green-5: var(--green-5);
+  --color-green-6: var(--green-6);
+  --color-green-7: var(--green-7);
+  --color-green-8: var(--green-8);
+  --color-green-9: var(--green-9);
+  --color-green-10: var(--green-10);
+  --color-green-11: var(--green-11);
+  --color-green-12: var(--green-12);
 
-    --color-red-1: var(--red-1);
-    --color-red-2: var(--red-2);
-    --color-red-3: var(--red-3);
-    --color-red-4: var(--red-4);
-    --color-red-5: var(--red-5);
-    --color-red-6: var(--red-6);
-    --color-red-7: var(--red-7);
-    --color-red-8: var(--red-8);
-    --color-red-9: var(--red-9);
-    --color-red-10: var(--red-10);
-    --color-red-11: var(--red-11);
-    --color-red-12: var(--red-12);
+  --color-red-1: var(--red-1);
+  --color-red-2: var(--red-2);
+  --color-red-3: var(--red-3);
+  --color-red-4: var(--red-4);
+  --color-red-5: var(--red-5);
+  --color-red-6: var(--red-6);
+  --color-red-7: var(--red-7);
+  --color-red-8: var(--red-8);
+  --color-red-9: var(--red-9);
+  --color-red-10: var(--red-10);
+  --color-red-11: var(--red-11);
+  --color-red-12: var(--red-12);
 
-    --color-yellow-1: var(--yellow-1);
-    --color-yellow-2: var(--yellow-2);
-    --color-yellow-3: var(--yellow-3);
-    --color-yellow-4: var(--yellow-4);
-    --color-yellow-5: var(--yellow-5);
-    --color-yellow-6: var(--yellow-6);
-    --color-yellow-7: var(--yellow-7);
-    --color-yellow-8: var(--yellow-8);
-    --color-yellow-9: var(--yellow-9);
-    --color-yellow-10: var(--yellow-10);
-    --color-yellow-11: var(--yellow-11);
-    --color-yellow-12: var(--yellow-12);
+  --color-yellow-1: var(--yellow-1);
+  --color-yellow-2: var(--yellow-2);
+  --color-yellow-3: var(--yellow-3);
+  --color-yellow-4: var(--yellow-4);
+  --color-yellow-5: var(--yellow-5);
+  --color-yellow-6: var(--yellow-6);
+  --color-yellow-7: var(--yellow-7);
+  --color-yellow-8: var(--yellow-8);
+  --color-yellow-9: var(--yellow-9);
+  --color-yellow-10: var(--yellow-10);
+  --color-yellow-11: var(--yellow-11);
+  --color-yellow-12: var(--yellow-12);
 
-    --color-cyan-1: var(--cyan-1);
-    --color-cyan-2: var(--cyan-2);
-    --color-cyan-3: var(--cyan-3);
-    --color-cyan-4: var(--cyan-4);
-    --color-cyan-5: var(--cyan-5);
-    --color-cyan-6: var(--cyan-6);
-    --color-cyan-7: var(--cyan-7);
-    --color-cyan-8: var(--cyan-8);
-    --color-cyan-9: var(--cyan-9);
-    --color-cyan-10: var(--cyan-10);
-    --color-cyan-11: var(--cyan-11);
-    --color-cyan-12: var(--cyan-12);
+  --color-cyan-1: var(--cyan-1);
+  --color-cyan-2: var(--cyan-2);
+  --color-cyan-3: var(--cyan-3);
+  --color-cyan-4: var(--cyan-4);
+  --color-cyan-5: var(--cyan-5);
+  --color-cyan-6: var(--cyan-6);
+  --color-cyan-7: var(--cyan-7);
+  --color-cyan-8: var(--cyan-8);
+  --color-cyan-9: var(--cyan-9);
+  --color-cyan-10: var(--cyan-10);
+  --color-cyan-11: var(--cyan-11);
+  --color-cyan-12: var(--cyan-12);
 }

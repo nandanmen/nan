@@ -4,26 +4,28 @@
 type Visual = {
   points: Record<string, ScenePoint>;
   scenes: SceneDefinition[];
-}
+};
 
 type ScenePoint = {
   shape: "circle" | "square" | "triangle" | "diamond";
   className: string;
   label?: string;
-}
+};
 
 type PointMap = Record<string, Point>;
 
-type SceneDefinition = PointMap | {
-  initial: PointMap;
-  on: Record<string, SceneDefinition>;
-};
+type SceneDefinition =
+  | PointMap
+  | {
+      initial: PointMap;
+      on: Record<string, SceneDefinition>;
+    };
 
 type Point = {
   x: number;
   y: number;
   label?: { x: number; y: number };
-}
+};
 
 function useVisual(visual: Visual): Scene;
 
@@ -39,8 +41,8 @@ type ScenePoint = {
     text: string;
     x: number;
     y: number;
-  }
-}
+  };
+};
 ```
 
 Usage:
