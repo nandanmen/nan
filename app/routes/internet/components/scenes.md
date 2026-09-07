@@ -7,7 +7,7 @@ type Visual = {
 };
 
 type ScenePoint = {
-  shape: "circle" | "square" | "triangle" | "diamond";
+  shape: "circle" | "square" | "triangle" | "diamond" | "router";
   className: string;
   label?: string;
 };
@@ -24,7 +24,7 @@ type SceneDefinition =
 type Point = {
   x: number;
   y: number;
-  label?: { x: number; y: number };
+  label?: { x: number; y: number; text?: string };
 };
 
 function useVisual(visual: Visual): Scene;
@@ -35,7 +35,7 @@ type ScenePoint = {
   id: string;
   x: number;
   y: number;
-  shape: "circle" | "square" | "triangle" | "diamond";
+  shape: "circle" | "square" | "triangle" | "diamond" | "router";
   className: string;
   label?: {
     text: string;

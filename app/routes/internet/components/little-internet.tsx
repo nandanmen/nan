@@ -96,6 +96,8 @@ const PACKET_TRANSITION = {
   ease: "linear",
 } as const;
 
+const LABEL_OFFSET_SCALE = 0.75;
+
 type Packet = {
   id: number;
   from: ScenePoint;
@@ -295,6 +297,8 @@ function Shape({
           vectorEffect="non-scaling-stroke"
         />
       );
+    case "router":
+      return <circle r="1" stroke="none" />;
   }
 }
 
@@ -311,12 +315,15 @@ function VertexLabel({
   targetX: number;
   targetY: number;
 }) {
+  const labelX = targetX + (x - targetX) * LABEL_OFFSET_SCALE;
+  const labelY = targetY + (y - targetY) * LABEL_OFFSET_SCALE;
+
   return (
     <g>
       <motion.line
         animate={{
-          x1: x,
-          y1: y,
+          x1: labelX,
+          y1: labelY,
           x2: targetX,
           y2: targetY,
         }}
@@ -328,21 +335,21 @@ function VertexLabel({
         vectorEffect="non-scaling-stroke"
       />
       <motion.g
-        animate={{ x, y }}
+        animate={{ x: labelX, y: labelY }}
         initial={false}
         transition={SWIFT_TRANSITION}
       >
         <rect
-          x="-0.45"
-          y="-0.45"
-          width="0.9"
-          height="0.9"
-          rx="0.1"
+          x="-0.35"
+          y="-0.35"
+          width="0.7"
+          height="0.7"
+          rx="0.08"
           className="fill-gray-12"
         />
         <text
           className="fill-gray-1 font-sans"
-          fontSize="0.55"
+          fontSize="0.4"
           fontWeight="600"
           textAnchor="middle"
           dominantBaseline="central"

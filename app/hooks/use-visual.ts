@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useScroller, useScrollerEvent } from "../components/scroller";
 
 export type PointDefinition = {
-  shape: "circle" | "square" | "triangle" | "diamond";
+  shape: "circle" | "square" | "triangle" | "diamond" | "router";
   className: string;
   label?: string;
 };
@@ -10,7 +10,7 @@ export type PointDefinition = {
 export type Point = {
   x: number;
   y: number;
-  label?: { x: number; y: number };
+  label?: { x: number; y: number; text?: string };
 };
 
 export type PointMap = Record<string, Point | null>;
@@ -41,7 +41,7 @@ export type ScenePoint = {
   id: string;
   x: number;
   y: number;
-  shape: "circle" | "square" | "triangle" | "diamond";
+  shape: "circle" | "square" | "triangle" | "diamond" | "router";
   className: string;
   label?: {
     text: string;
@@ -69,7 +69,7 @@ function toScene(
       className: visualPoint.className,
       ...(point.label && {
         label: {
-          text: visualPoint.label ?? id,
+          text: point.label.text ?? visualPoint.label ?? id,
           x: point.label.x,
           y: point.label.y,
         },

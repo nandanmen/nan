@@ -1,4 +1,5 @@
 import { LittleInternet } from "./components/little-internet";
+import { RouterNetwork } from "./components/router-network";
 
 <Scroller figure={<LittleInternet />}>
 
@@ -36,15 +37,13 @@ A 7th, 6 more connections, and so on. This quickly becomes impractical!
 
 </Scroller>
 
-<Scroller>
+<Scroller figure={<RouterNetwork />}>
 
 One way to fix this is to have a dedicated _central_ computer whose sole purpose is to connect the computers in the network to each other. In this setup, the computers only need to be physically connected to the central computer.
 
 When a computer wants to send data to another, it'll send it to the central computer with the destination IP address. Since this central computer knows all of the IP addresses in the network, it can correctly _route_ the data to its destination.
 
-```
-send button
-```
+<ScrollerButton onClick={{ type: "send-packet", from: "one", to: "two" }}>Send data</ScrollerButton>
 
 We'll call this central computer a **router** because, er, it routes.
 
