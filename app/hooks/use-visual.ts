@@ -34,6 +34,7 @@ export type SceneDefinition =
 export type Visual = {
   points: Record<string, PointDefinition>;
   scenes: SceneDefinition[];
+  events?: string[];
 };
 
 export type ScenePoint = {
@@ -92,6 +93,13 @@ function resolveScene(definition: SceneDefinition): {
     : { points: definition, transitions: {} };
 }
 
+function getAvailableEvents(
+  visual: Visual,
+  transitions: Record<string, SceneDefinition>,
+): string[] {
+  return [...new Set([...Object.keys(transitions), ...(visual.events ?? [])])];
+}
+
 function assertFirstScene(visual: Visual): SceneDefinition {
   const scene = visual.scenes.at(0);
   if (!scene) {
@@ -112,7 +120,10 @@ export function useVisual(visual: Visual): Scene {
     const next = resolveScene(nextScene);
     setPoints(applyPoints({}, next.points));
     transitions.current = next.transitions;
-    setAvailableEvents({ index: activeSection, types: Object.keys(next.transitions) });
+    setAvailableEvents({
+      index: activeSection,
+      types: getAvailableEvents(visual, next.transitions),
+    });
     return () => setAvailableEvents(null);
   }, [visual, activeSection, setAvailableEvents]);
 
@@ -121,7 +132,10 @@ export function useVisual(visual: Visual): Scene {
     if (!Object.hasOwn(transitions.current, event.type)) return;
     const nextScene = resolveScene(transitions.current[event.type]);
     transitions.current = nextScene.transitions;
-    setAvailableEvents({ index: activeSection, types: Object.keys(nextScene.transitions) });
+    setAvailableEvents({
+      index: activeSection,
+      types: getAvailableEvents(visual, nextScene.transitions),
+    });
     setPoints((currentPoints) => applyPoints(currentPoints, nextScene.points));
   });
 

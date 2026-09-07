@@ -4,8 +4,12 @@ import {
   type ScenePoint,
   type Visual,
 } from "../../../hooks/use-visual";
+import {
+  useScrollerEvent,
+  type ScrollerEvent,
+} from "../../../components/scroller";
 import { motion } from "motion/react";
-import { useLayoutEffect, useRef } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 
 const pentagonScene: SceneDefinition = {
   initial: {
@@ -76,6 +80,7 @@ const littleInternetVisual: Visual = {
     seven: { shape: "triangle", className: "fill-cyan-9", label: "7" },
   },
   scenes,
+  events: ["send-packet"],
 };
 
 const SWIFT_TRANSITION = {
@@ -85,13 +90,76 @@ const SWIFT_TRANSITION = {
   mass: 0.3,
 } as const;
 
+const PACKET_TRANSITION = {
+  type: "tween",
+  duration: 0.5,
+  ease: "linear",
+} as const;
+
+type Packet = {
+  id: number;
+  from: ScenePoint;
+  to: ScenePoint;
+};
+
+type SendPacketEvent = ScrollerEvent & {
+  type: "send-packet";
+  from?: string;
+  random?: boolean;
+  to?: string;
+};
+
+function isSendPacketEvent(event: ScrollerEvent): event is SendPacketEvent {
+  return (
+    event.type === "send-packet" &&
+    (event.random === true ||
+      (typeof event.from === "string" && typeof event.to === "string"))
+  );
+}
+
+function randomConnectedPair(
+  scene: ScenePoint[],
+): [ScenePoint, ScenePoint] | null {
+  if (scene.length < 2) return null;
+
+  const fromIndex = Math.floor(Math.random() * scene.length);
+  const toIndex = Math.floor(Math.random() * (scene.length - 1));
+  const adjustedToIndex = toIndex >= fromIndex ? toIndex + 1 : toIndex;
+
+  return [scene[fromIndex], scene[adjustedToIndex]];
+}
+
+function packetRotation({ from, to }: Packet): number {
+  const direction = Math.atan2(to.y - from.y, to.x - from.x);
+  return (direction * 180) / Math.PI - 90;
+}
+
 export function LittleInternet() {
   const scene = useVisual(littleInternetVisual);
   const previousPoints = useRef(new Map<string, ScenePoint>());
+  const [packet, setPacket] = useState<Packet | null>(null);
+  const packetId = useRef(0);
+
+  useScrollerEvent((event) => {
+    if (!isSendPacketEvent(event)) return;
+
+    const [randomFrom, randomTo] = event.random
+      ? (randomConnectedPair(scene) ?? [])
+      : [];
+    const from = randomFrom ?? scene.find((point) => point.id === event.from);
+    const to = randomTo ?? scene.find((point) => point.id === event.to);
+    if (!from || !to) return;
+
+    setPacket({ id: packetId.current++, from, to });
+  });
+
   useLayoutEffect(() => {
     previousPoints.current = new Map(scene.map((point) => [point.id, point]));
   }, [scene]);
-  const links = scene.flatMap((from, index) => scene.slice(index + 1).map((to) => ({ from, to })));
+  const links = scene.flatMap((from, index) =>
+    scene.slice(index + 1).map((to) => ({ from, to })),
+  );
+  const rotation = packet ? packetRotation(packet) : 0;
   return (
     <div className="w-full">
       <svg
@@ -123,6 +191,28 @@ export function LittleInternet() {
             />
           ))}
         </g>
+        {packet && (
+          <motion.g
+            key={packet.id}
+            animate={{ x: packet.to.x, y: packet.to.y, rotate: rotation }}
+            initial={{ x: packet.from.x, y: packet.from.y, rotate: rotation }}
+            onAnimationComplete={() =>
+              setPacket((current) =>
+                current?.id === packet.id ? null : current,
+              )
+            }
+            transition={PACKET_TRANSITION}
+          >
+            <ellipse
+              rx="0.2"
+              ry="0.3"
+              className="fill-green-9 text-gray-1"
+              stroke="currentColor"
+              vectorEffect="non-scaling-stroke"
+              strokeWidth="2"
+            />
+          </motion.g>
+        )}
         {scene.map(
           (point) =>
             point.label && (
@@ -146,13 +236,23 @@ export function LittleInternet() {
 
 function ScenePoint({ point }: { point: ScenePoint }) {
   return (
-    <motion.g animate={{ x: point.x, y: point.y }} initial={false} transition={SWIFT_TRANSITION}>
+    <motion.g
+      animate={{ x: point.x, y: point.y }}
+      initial={false}
+      transition={SWIFT_TRANSITION}
+    >
       <Shape type={point.shape} className={point.className} />
     </motion.g>
   );
 }
 
-function Shape({ type, className }: { type: ScenePoint["shape"]; className?: string }) {
+function Shape({
+  type,
+  className,
+}: {
+  type: ScenePoint["shape"];
+  className?: string;
+}) {
   const triangleHeight = Math.sqrt(3) / 2;
   switch (type) {
     case "circle":
@@ -227,8 +327,19 @@ function VertexLabel({
         strokeWidth="1.5"
         vectorEffect="non-scaling-stroke"
       />
-      <motion.g animate={{ x, y }} initial={false} transition={SWIFT_TRANSITION}>
-        <rect x="-0.45" y="-0.45" width="0.9" height="0.9" rx="0.1" className="fill-gray-12" />
+      <motion.g
+        animate={{ x, y }}
+        initial={false}
+        transition={SWIFT_TRANSITION}
+      >
+        <rect
+          x="-0.45"
+          y="-0.45"
+          width="0.9"
+          height="0.9"
+          rx="0.1"
+          className="fill-gray-12"
+        />
         <text
           className="fill-gray-1 font-sans"
           fontSize="0.55"

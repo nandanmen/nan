@@ -20,6 +20,7 @@ type Section = {
 
 export type ScrollerEvent = {
   type: string;
+  [parameter: string]: unknown;
 };
 
 type ScrollerEventListener = (event: ScrollerEvent, index: number) => void;
