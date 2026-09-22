@@ -214,10 +214,10 @@ export function Scroller({ children, figure }: ScrollerProps) {
           ))}
         </div>
         <figure
-          className="min-w-0 p-(--scroller-padding) pb-0"
+          className="min-w-0 p-(--scroller-padding)"
           style={{ containerType: "inline-size" }}
         >
-          <div className="[--grid-size:12.5cqw] xl:[--grid-size:6.25cqw] h-full max-h-screen sticky -top-px">
+          <div className="[--grid-size:12.5cqw] xl:[--grid-size:6.25cqw] [height:round(down,100%,var(--grid-size))] [max-height:round(down,100vh,var(--grid-size))] sticky -top-px">
             <div
               aria-hidden="true"
               className="pointer-events-none absolute -inset-px p-px"
