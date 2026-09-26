@@ -44,7 +44,7 @@ export default function Internet() {
         </p>
       </header>
       <div className="px-4">
-        <article className="grid grid-cols-[minmax(0,1fr)_minmax(0,60ch)_minmax(0,1fr)] gap-y-6 [&>*:not([data-full-width])]:col-start-2 [&>*[data-full-width]]:col-span-full">
+        <article className="grid grid-cols-[minmax(0,1fr)_minmax(0,60ch)_minmax(0,1fr)] gap-y-6 [&>*:not([data-full-width])]:col-start-2 [&>*[data-full-width]]:col-span-full [&_:not(pre)>code]:bg-white [&_:not(pre)>code]:px-1 [&_:not(pre)>code]:py-0.5 [&_:not(pre)>code]:rounded-sm [&_:not(pre)>code]:ring-1 [&_:not(pre)>code]:ring-black/15 [&_:not(pre)>code]:text-[0.875em]">
           <Provider>
             <InternetContent
               components={{
@@ -63,7 +63,7 @@ export default function Internet() {
                   <h3 className="text-xl font-medium">{children}</h3>
                 ),
                 ol: ({ children }: { children: ReactNode }) => (
-                  <ol className="grid list-decimal gap-y-2 pl-6">{children}</ol>
+                  <ol className="grid list-decimal gap-y-2 pl-6 tabular-nums marker:text-gray-9">{children}</ol>
                 ),
                 ul: ({ children }: { children: ReactNode }) => (
                   <ul className="grid list-disc gap-y-2 pl-6">{children}</ul>
