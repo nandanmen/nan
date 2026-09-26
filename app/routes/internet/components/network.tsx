@@ -161,7 +161,9 @@ export function GridBackground({ children }: { children: ReactNode }) {
 export function RouterShape({ badge }: { badge: RouterBadge }) {
   return (
     <>
-      {/* Numbered card tucked behind the router, peeking out above it. */}
+      {/* Numbered card tucked behind the router, peeking out above it. Labels in
+          these figures center their digits with dy rather than
+          dominant-baseline, which iOS WebKit places too high. */}
       <g>
         <rect
           x="-0.25"
@@ -178,7 +180,7 @@ export function RouterShape({ badge }: { badge: RouterBadge }) {
           fontSize="0.28"
           fontWeight="700"
           textAnchor="middle"
-          dominantBaseline="central"
+          dy="0.35em"
         >
           {badge.label}
         </text>

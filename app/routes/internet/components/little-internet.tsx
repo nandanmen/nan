@@ -320,7 +320,7 @@ function VertexLabel({
             fontSize="0.4"
             fontWeight="600"
             textAnchor="middle"
-            dominantBaseline="central"
+            dy="0.35em"
           >
             {label}
           </text>
