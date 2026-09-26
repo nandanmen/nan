@@ -10,7 +10,7 @@ import {
 } from "../../../components/scroller";
 import { motion, useAnimate } from "motion/react";
 import { useLayoutEffect, useRef } from "react";
-import { clearRoute, LinkFills, NODE_SCALE, routeSequence } from "./network";
+import { clearRoute, LinkFills, NODE_SCALE, routeSequence, SmallScreenCenter } from "./network";
 
 const pentagonScene: SceneDefinition = {
   initial: {
@@ -169,45 +169,47 @@ export function LittleInternet() {
         role="img"
         viewBox="0 0 16 16"
       >
-        <g stroke="currentColor" className="text-gray-7">
-          {links.map(({ from, to }) => (
-            <motion.line
-              key={`${from.id}-${to.id}`}
-              animate={{
-                x1: from.x,
-                y1: from.y,
-                x2: to.x,
-                y2: to.y,
-              }}
-              initial={{
-                x1: previousPoints.current.get(from.id)?.x ?? from.x,
-                y1: previousPoints.current.get(from.id)?.y ?? from.y,
-                x2: previousPoints.current.get(to.id)?.x ?? to.x,
-                y2: previousPoints.current.get(to.id)?.y ?? to.y,
-              }}
-              transition={SWIFT_TRANSITION}
-              vectorEffect="non-scaling-stroke"
-              strokeWidth="6"
-            />
-          ))}
-        </g>
-        <LinkFills count={1} />
-        {scene.map(
-          (point) =>
-            point.label && (
-              <VertexLabel
-                key={`${point.id}-label`}
-                label={point.label.text}
-                x={point.label.x}
-                y={point.label.y}
-                targetX={point.x}
-                targetY={point.y}
+        <SmallScreenCenter points={scene}>
+          <g stroke="currentColor" className="text-gray-7">
+            {links.map(({ from, to }) => (
+              <motion.line
+                key={`${from.id}-${to.id}`}
+                animate={{
+                  x1: from.x,
+                  y1: from.y,
+                  x2: to.x,
+                  y2: to.y,
+                }}
+                initial={{
+                  x1: previousPoints.current.get(from.id)?.x ?? from.x,
+                  y1: previousPoints.current.get(from.id)?.y ?? from.y,
+                  x2: previousPoints.current.get(to.id)?.x ?? to.x,
+                  y2: previousPoints.current.get(to.id)?.y ?? to.y,
+                }}
+                transition={SWIFT_TRANSITION}
+                vectorEffect="non-scaling-stroke"
+                strokeWidth="6"
               />
-            ),
-        )}
-        {scene.map((point) => (
-          <ScenePoint key={point.id} point={point} />
-        ))}
+            ))}
+          </g>
+          <LinkFills count={1} />
+          {scene.map(
+            (point) =>
+              point.label && (
+                <VertexLabel
+                  key={`${point.id}-label`}
+                  label={point.label.text}
+                  x={point.label.x}
+                  y={point.label.y}
+                  targetX={point.x}
+                  targetY={point.y}
+                />
+              ),
+          )}
+          {scene.map((point) => (
+            <ScenePoint key={point.id} point={point} />
+          ))}
+        </SmallScreenCenter>
       </svg>
     </div>
   );

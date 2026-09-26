@@ -1,5 +1,5 @@
 import { motion, type AnimationSequence } from "motion/react";
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 
 // Shared pieces for the internet visuals: the dotted grid, routers, and the
 // link fill that draws a route as data travels along it.
@@ -130,6 +130,45 @@ export function LinkFills({ count }: { count: number }) {
           strokeWidth="6"
         />
       ))}
+    </g>
+  );
+}
+
+const FIGURE_SIZE = 16;
+// Grid lines fall every this many units on small screens.
+const SMALL_SCREEN_GRID_STEP = 2;
+
+type LabeledPoint = Point & { label?: Point };
+
+// Offset that moves the middle of [min, max] to the middle of the figure, in
+// whole grid cells so points stay on the grid lines.
+function centeringShift(values: number[]) {
+  const middle = (Math.min(...values) + Math.max(...values)) / 2;
+  const cells = Math.round((FIGURE_SIZE / 2 - middle) / SMALL_SCREEN_GRID_STEP);
+  return cells * SMALL_SCREEN_GRID_STEP;
+}
+
+/** Centers a drawing of `points` (and their labels) in its 16-unit figure on small screens. */
+export function SmallScreenCenter({
+  points,
+  children,
+}: {
+  points: LabeledPoint[];
+  children: ReactNode;
+}) {
+  const withLabels = points.flatMap((point) => (point.label ? [point, point.label] : [point]));
+  // CSS lengths on SVG content are in user units, so px here means grid units.
+  const style = {
+    "--center-x": `${centeringShift(withLabels.map((point) => point.x))}px`,
+    "--center-y": `${centeringShift(withLabels.map((point) => point.y))}px`,
+  } as CSSProperties;
+
+  return (
+    <g
+      className="max-lg:translate-x-(--center-x) max-lg:translate-y-(--center-y) transition-[translate] duration-300"
+      style={style}
+    >
+      {children}
     </g>
   );
 }

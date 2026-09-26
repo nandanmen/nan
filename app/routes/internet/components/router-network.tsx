@@ -13,6 +13,7 @@ import {
   NODE_SCALE,
   routeSequence,
   RouterShape,
+  SmallScreenCenter,
   type RoutePoint,
   type RouterBadge,
 } from "./network";
@@ -190,57 +191,59 @@ export function RouterNetwork() {
         role="img"
         viewBox="0 0 16 16"
       >
-        <g stroke="currentColor" className="text-gray-7">
-          {links.map(({ from, to }) => (
-            <motion.line
-              key={`${from.id}-${to.id}`}
-              animate={{
-                x1: from.x,
-                y1: from.y,
-                x2: to.x,
-                y2: to.y,
-              }}
-              initial={{
-                x1: previousPoints.current.get(from.id)?.x ?? from.x,
-                y1: previousPoints.current.get(from.id)?.y ?? from.y,
-                x2: previousPoints.current.get(to.id)?.x ?? to.x,
-                y2: previousPoints.current.get(to.id)?.y ?? to.y,
-              }}
-              transition={SWIFT_TRANSITION}
-              vectorEffect="non-scaling-stroke"
-              strokeWidth="6"
+        <SmallScreenCenter points={scene}>
+          <g stroke="currentColor" className="text-gray-7">
+            {links.map(({ from, to }) => (
+              <motion.line
+                key={`${from.id}-${to.id}`}
+                animate={{
+                  x1: from.x,
+                  y1: from.y,
+                  x2: to.x,
+                  y2: to.y,
+                }}
+                initial={{
+                  x1: previousPoints.current.get(from.id)?.x ?? from.x,
+                  y1: previousPoints.current.get(from.id)?.y ?? from.y,
+                  x2: previousPoints.current.get(to.id)?.x ?? to.x,
+                  y2: previousPoints.current.get(to.id)?.y ?? to.y,
+                }}
+                transition={SWIFT_TRANSITION}
+                vectorEffect="non-scaling-stroke"
+                strokeWidth="6"
+              />
+            ))}
+          </g>
+          <LinkFills count={links.length} />
+          {scene.map(
+            (point) =>
+              point.label && (
+                <VertexLabel
+                  key={`${point.id}-label`}
+                  label={point.label.text}
+                  x={point.label.x}
+                  y={point.label.y}
+                  targetX={point.x}
+                  targetY={point.y}
+                />
+              ),
+          )}
+          {scene.map((point) => (
+            <ScenePoint
+              key={point.id}
+              point={
+                hasSecondNetwork && point.shape !== "router"
+                  ? {
+                      ...point,
+                      className: ["four", "five", "six"].includes(point.id)
+                        ? "fill-red-9"
+                        : "fill-blue-7",
+                    }
+                  : point
+              }
             />
           ))}
-        </g>
-        <LinkFills count={links.length} />
-        {scene.map(
-          (point) =>
-            point.label && (
-              <VertexLabel
-                key={`${point.id}-label`}
-                label={point.label.text}
-                x={point.label.x}
-                y={point.label.y}
-                targetX={point.x}
-                targetY={point.y}
-              />
-            ),
-        )}
-        {scene.map((point) => (
-          <ScenePoint
-            key={point.id}
-            point={
-              hasSecondNetwork && point.shape !== "router"
-                ? {
-                    ...point,
-                    className: ["four", "five", "six"].includes(point.id)
-                      ? "fill-red-9"
-                      : "fill-blue-7",
-                  }
-                : point
-            }
-          />
-        ))}
+        </SmallScreenCenter>
       </svg>
     </div>
   );

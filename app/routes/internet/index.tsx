@@ -29,7 +29,7 @@ export default function Internet() {
     <main className="text-lg leading-relaxed grid gap-y-24 pb-32">
       <InterruptedWorldMap />
       <header className="w-full max-w-[calc(60ch+2rem)] px-4 mx-auto grid gap-y-6">
-        <h1 className="text-[56px] font-serif">How does the Internet work?</h1>
+        <h1 className="text-[56px] font-serif max-lg:leading-[1.05]">How does the Internet work?</h1>
         <p>
           It's really easy to overlook the way the internet works. In JavaScript, we can make
           software that talks to other computers on the internet simply using a `fetch` call:
