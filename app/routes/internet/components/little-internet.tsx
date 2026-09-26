@@ -8,8 +8,9 @@ import {
   useScrollerEvent,
   type ScrollerEvent,
 } from "../../../components/scroller";
-import { motion } from "motion/react";
-import { useLayoutEffect, useRef, useState } from "react";
+import { motion, useAnimate } from "motion/react";
+import { useLayoutEffect, useRef } from "react";
+import { clearRoute, LinkFills, routeSequence } from "./network";
 
 const pentagonScene: SceneDefinition = {
   initial: {
@@ -90,19 +91,7 @@ const SWIFT_TRANSITION = {
   mass: 0.3,
 } as const;
 
-const PACKET_TRANSITION = {
-  type: "tween",
-  duration: 0.5,
-  ease: "linear",
-} as const;
-
 const LABEL_OFFSET_SCALE = 0.75;
-
-type Packet = {
-  id: number;
-  from: ScenePoint;
-  to: ScenePoint;
-};
 
 type SendPacketEvent = ScrollerEvent & {
   type: "send-packet";
@@ -131,16 +120,11 @@ function randomConnectedPair(
   return [scene[fromIndex], scene[adjustedToIndex]];
 }
 
-function packetRotation({ from, to }: Packet): number {
-  const direction = Math.atan2(to.y - from.y, to.x - from.x);
-  return (direction * 180) / Math.PI - 90;
-}
-
 export function LittleInternet() {
   const scene = useVisual(littleInternetVisual);
   const previousPoints = useRef(new Map<string, ScenePoint>());
-  const [packet, setPacket] = useState<Packet | null>(null);
-  const packetId = useRef(0);
+  const [scope, animate] = useAnimate();
+  const animationRef = useRef<{ stop: () => void } | null>(null);
 
   useScrollerEvent((event) => {
     if (!isSendPacketEvent(event)) return;
@@ -152,19 +136,33 @@ export function LittleInternet() {
     const to = randomTo ?? scene.find((point) => point.id === event.to);
     if (!from || !to) return;
 
-    setPacket({ id: packetId.current++, from, to });
+    animationRef.current?.stop();
+    clearRoute(animate);
+    animationRef.current = animate(routeSequence([from, to], { retract: true }), {
+      onComplete: () => {
+        animationRef.current = null;
+      },
+    });
   });
 
   useLayoutEffect(() => {
     previousPoints.current = new Map(scene.map((point) => [point.id, point]));
   }, [scene]);
+
+  // A drawn route no longer lines up once the points move, so clear it.
+  const layoutKey = scene.map((point) => `${point.id}:${point.x},${point.y}`).join(" ");
+  useLayoutEffect(() => {
+    animationRef.current?.stop();
+    animationRef.current = null;
+    clearRoute(animate);
+  }, [layoutKey, animate]);
   const links = scene.flatMap((from, index) =>
     scene.slice(index + 1).map((to) => ({ from, to })),
   );
-  const rotation = packet ? packetRotation(packet) : 0;
   return (
     <div className="w-full">
       <svg
+        ref={scope}
         aria-label="Connected computers"
         className="block w-full h-auto aspect-square overflow-visible"
         fill="none"
@@ -193,28 +191,7 @@ export function LittleInternet() {
             />
           ))}
         </g>
-        {packet && (
-          <motion.g
-            key={packet.id}
-            animate={{ x: packet.to.x, y: packet.to.y, rotate: rotation }}
-            initial={{ x: packet.from.x, y: packet.from.y, rotate: rotation }}
-            onAnimationComplete={() =>
-              setPacket((current) =>
-                current?.id === packet.id ? null : current,
-              )
-            }
-            transition={PACKET_TRANSITION}
-          >
-            <ellipse
-              rx="0.2"
-              ry="0.3"
-              className="fill-green-9 text-gray-1"
-              stroke="currentColor"
-              vectorEffect="non-scaling-stroke"
-              strokeWidth="2"
-            />
-          </motion.g>
-        )}
+        <LinkFills count={1} />
         {scene.map(
           (point) =>
             point.label && (

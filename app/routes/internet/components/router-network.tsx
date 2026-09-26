@@ -7,33 +7,33 @@ import {
 import { useScrollerEvent, type ScrollerEvent } from "../../../components/scroller";
 import { motion, useAnimate } from "motion/react";
 import { useLayoutEffect, useRef } from "react";
+import {
+  clearRoute,
+  LinkFills,
+  routeSequence,
+  RouterShape,
+  type RoutePoint,
+  type RouterBadge,
+} from "./network";
 
 const scenes: SceneDefinition[] = [
   {
     one: { x: 8, y: 3, label: { x: 8, y: 1.5, text: "1" } },
-    four: { x: 11, y: 5, label: { x: 12.5, y: 5, text: "4" } },
-    three: { x: 10, y: 9, label: { x: 11.5, y: 10.5, text: "3" } },
-    two: { x: 6, y: 9, label: { x: 4.5, y: 10.5, text: "2" } },
-    five: { x: 5, y: 5, label: { x: 3.5, y: 5, text: "5" } },
+    four: { x: 11, y: 5, label: { x: 12.423, y: 4.526, text: "4" } },
+    three: { x: 10, y: 9, label: { x: 10.832, y: 10.248, text: "3" } },
+    two: { x: 6, y: 9, label: { x: 5.168, y: 10.248, text: "2" } },
+    five: { x: 5, y: 5, label: { x: 3.577, y: 4.526, text: "5" } },
     routerOne: { x: 8, y: 6 },
   },
   {
-    one: { x: 2, y: 4, label: { x: 1.8, y: 2.5, text: "1.1" } },
-    two: { x: 2, y: 12, label: { x: 1.8, y: 13.5, text: "1.2" } },
-    three: { x: 6.5, y: 8, label: { x: 6.5, y: 6.5, text: "1.3" } },
-    routerOne: {
-      x: 4,
-      y: 8,
-      label: { x: 4, y: 9.5, text: "R1" },
-    },
-    four: { x: 14, y: 4, label: { x: 14, y: 2.5, text: "2.1" } },
-    five: { x: 14, y: 12, label: { x: 14, y: 13.5, text: "2.2" } },
-    six: { x: 9.5, y: 8, label: { x: 9.5, y: 6.5, text: "2.3" } },
-    routerTwo: {
-      x: 12,
-      y: 8,
-      label: { x: 12, y: 9.5, text: "R2" },
-    },
+    one: { x: 5, y: 5, label: { x: 4, y: 4, text: "1.1" } },
+    two: { x: 4, y: 7, label: { x: 2.5, y: 7, text: "1.2" } },
+    three: { x: 7, y: 4, label: { x: 7, y: 2.5, text: "1.3" } },
+    routerOne: { x: 7, y: 7 },
+    four: { x: 12, y: 9, label: { x: 13.5, y: 9, text: "2.1" } },
+    five: { x: 11, y: 11, label: { x: 12, y: 12, text: "2.2" } },
+    six: { x: 9, y: 12, label: { x: 9, y: 13.5, text: "2.3" } },
+    routerTwo: { x: 9, y: 9 },
   },
 ];
 
@@ -59,24 +59,13 @@ const SWIFT_TRANSITION = {
   mass: 0.3,
 } as const;
 
-const PACKET_TRANSITION = {
-  type: "tween",
-  duration: 0.4,
-  ease: "linear",
-} as const;
-
-const PACKET_ROTATION_TRANSITION = { duration: 0 } as const;
-
 const LABEL_OFFSET_SCALE = 0.75;
-const ROUTER_DOT_DELAY = 0.15;
 
-type RouterDot = 0 | 1 | 2 | 3;
-const ROUTER_DOT_POSITIONS = [
-  { x: -0.16, y: -0.16 },
-  { x: 0.16, y: -0.16 },
-  { x: -0.16, y: 0.16 },
-  { x: 0.16, y: 0.16 },
-] as const;
+// Each router's card uses its network's color.
+const ROUTER_BADGES: Record<string, RouterBadge> = {
+  routerOne: { label: "1", fill: "var(--blue-9)", text: "white" },
+  routerTwo: { label: "2", fill: "var(--red-9)", text: "white" },
+};
 
 type SendPacketEvent = ScrollerEvent & {
   type: "send-packet";
@@ -88,20 +77,6 @@ function isSendPacketEvent(event: ScrollerEvent): event is SendPacketEvent {
   return (
     event.type === "send-packet" && typeof event.from === "string" && typeof event.to === "string"
   );
-}
-
-function packetRotation(from: ScenePoint, to: ScenePoint): number {
-  const direction = Math.atan2(to.y - from.y, to.x - from.x);
-  return (direction * 180) / Math.PI - 90;
-}
-
-function routerDotForDirection(router: ScenePoint, point: ScenePoint): RouterDot {
-  const direction = Math.atan2(point.y - router.y, point.x - router.x);
-
-  if (direction < -Math.PI / 2) return 0;
-  if (direction < 0) return 1;
-  if (direction < Math.PI / 2) return 3;
-  return 2;
 }
 
 const firstNetworkConnections = [
@@ -133,65 +108,76 @@ function getConnections(scene: ScenePoint[]) {
   });
 }
 
+// Finds the shortest chain of links from `from` to `to`, marking routers along the way.
+function findRoute(
+  links: { from: ScenePoint; to: ScenePoint }[],
+  from: ScenePoint,
+  to: ScenePoint,
+): RoutePoint[] | null {
+  const neighbors = new Map<string, ScenePoint[]>();
+  for (const link of links) {
+    neighbors.set(link.from.id, [...(neighbors.get(link.from.id) ?? []), link.to]);
+    neighbors.set(link.to.id, [...(neighbors.get(link.to.id) ?? []), link.from]);
+  }
+
+  const previous = new Map<string, ScenePoint | null>([[from.id, null]]);
+  const queue = [from];
+  while (queue.length > 0) {
+    const point = queue.shift()!;
+    if (point.id === to.id) break;
+    for (const next of neighbors.get(point.id) ?? []) {
+      if (previous.has(next.id)) continue;
+      previous.set(next.id, point);
+      queue.push(next);
+    }
+  }
+  if (!previous.has(to.id)) return null;
+
+  const route: RoutePoint[] = [];
+  for (let point: ScenePoint | null = to; point; point = previous.get(point.id) ?? null) {
+    route.unshift(point.shape === "router" ? { ...point, routerId: point.id } : point);
+  }
+  return route;
+}
+
 export function RouterNetwork() {
   const scene = useVisual(routerNetworkVisual);
   const previousPoints = useRef(new Map<string, ScenePoint>());
   const [scope, animate] = useAnimate();
   const animationRef = useRef<{ stop: () => void } | null>(null);
 
-  const runPacketAnimation = (from: ScenePoint, router: ScenePoint, to: ScenePoint) => {
-    animationRef.current?.stop();
-
-    const firstRotation = packetRotation(from, router);
-    const secondRotation = packetRotation(router, to);
-    const incomingDot = routerDotForDirection(router, from);
-    const outgoingDot = routerDotForDirection(router, to);
-    const packetSelector = "[data-packet]";
-    const incomingDotSelector = `[data-point-id="${router.id}"] [data-router-dot="${incomingDot}"]`;
-    const outgoingDotSelector = `[data-point-id="${router.id}"] [data-router-dot="${outgoingDot}"]`;
-
-    animationRef.current = animate(
-      [
-        [packetSelector, { opacity: 0 }, { duration: 0, at: 0 }],
-        [packetSelector, { x: from.x, y: from.y, rotate: firstRotation }, { duration: 0, at: 0 }],
-        ["[data-router-dot]", { opacity: 0 }, { duration: 0, at: 0 }],
-        [packetSelector, { opacity: 1 }, { duration: 0, at: 0 }],
-        [packetSelector, { x: router.x, y: router.y }, PACKET_TRANSITION],
-        [incomingDotSelector, { opacity: 1 }, { duration: 0 }],
-        [outgoingDotSelector, { opacity: 1 }, { duration: 0, at: `+${ROUTER_DOT_DELAY}` }],
-        [
-          packetSelector,
-          { x: to.x, y: to.y },
-          { ...PACKET_TRANSITION, at: `+${ROUTER_DOT_DELAY}` },
-        ],
-        [packetSelector, { rotate: secondRotation }, { ...PACKET_ROTATION_TRANSITION, at: "<" }],
-        [packetSelector, { opacity: 0 }, { duration: 0 }],
-        ["[data-router-dot]", { opacity: 0 }, { duration: 0, at: "<" }],
-      ],
-      {
-        onComplete: () => {
-          animationRef.current = null;
-        },
-      },
-    );
-  };
+  const links = getConnections(scene);
 
   useScrollerEvent((event) => {
     if (!isSendPacketEvent(event)) return;
 
     const from = scene.find((point) => point.id === event.from);
-    const router = scene.find((point) => point.id === "routerOne");
     const to = scene.find((point) => point.id === event.to);
-    if (!from || !router || !to) return;
+    const route = from && to && findRoute(links, from, to);
+    if (!route) return;
 
-    runPacketAnimation(from, router, to);
+    animationRef.current?.stop();
+    clearRoute(animate);
+    animationRef.current = animate(routeSequence(route), {
+      onComplete: () => {
+        animationRef.current = null;
+      },
+    });
   });
 
   useLayoutEffect(() => {
     previousPoints.current = new Map(scene.map((point) => [point.id, point]));
   }, [scene]);
 
-  const links = getConnections(scene);
+  // A drawn route no longer lines up once the points move, so clear it.
+  const layoutKey = scene.map((point) => `${point.id}:${point.x},${point.y}`).join(" ");
+  useLayoutEffect(() => {
+    animationRef.current?.stop();
+    animationRef.current = null;
+    clearRoute(animate);
+  }, [layoutKey, animate]);
+
+  const hasSecondNetwork = scene.some((point) => point.id === "routerTwo");
 
   return (
     <div className="w-full">
@@ -225,16 +211,7 @@ export function RouterNetwork() {
             />
           ))}
         </g>
-        <motion.g data-packet style={{ opacity: 0 }}>
-          <ellipse
-            rx="0.2"
-            ry="0.3"
-            className="fill-blue-9 text-gray-1"
-            stroke="currentColor"
-            vectorEffect="non-scaling-stroke"
-            strokeWidth="2"
-          />
-        </motion.g>
+        <LinkFills count={links.length} />
         {scene.map(
           (point) =>
             point.label && (
@@ -249,7 +226,19 @@ export function RouterNetwork() {
             ),
         )}
         {scene.map((point) => (
-          <ScenePoint key={point.id} point={point} />
+          <ScenePoint
+            key={point.id}
+            point={
+              hasSecondNetwork && point.shape !== "router"
+                ? {
+                    ...point,
+                    className: ["four", "five", "six"].includes(point.id)
+                      ? "fill-red-9"
+                      : "fill-blue-7",
+                  }
+                : point
+            }
+          />
         ))}
       </svg>
     </div>
@@ -261,10 +250,15 @@ function ScenePoint({ point }: { point: ScenePoint }) {
     <motion.g
       animate={{ x: point.x, y: point.y }}
       data-point-id={point.id}
+      data-router={point.shape === "router" ? point.id : undefined}
       initial={false}
       transition={SWIFT_TRANSITION}
     >
-      <Shape type={point.shape} className={point.className} />
+      {point.shape === "router" ? (
+        <RouterShape badge={ROUTER_BADGES[point.id]} />
+      ) : (
+        <Shape type={point.shape} className={point.className} />
+      )}
     </motion.g>
   );
 }
@@ -313,35 +307,7 @@ function Shape({ type, className }: { type: ScenePoint["shape"]; className?: str
         />
       );
     case "router":
-      return (
-        <>
-          <rect
-            width="1"
-            height="1"
-            x="-0.5"
-            y="-0.5"
-            rx="0.2"
-            className={`${className} stroke-current`}
-            vectorEffect="non-scaling-stroke"
-            strokeWidth="3"
-          />
-          <g>
-            {ROUTER_DOT_POSITIONS.map(({ x, y }, index) => (
-              <g key={`${x}-${y}`}>
-                <circle cx={x} cy={y} r="0.1" className="fill-gray-8" />
-                <circle
-                  data-router-dot={index}
-                  cx={x}
-                  cy={y}
-                  r="0.1"
-                  className="fill-blue-9"
-                  opacity="0"
-                />
-              </g>
-            ))}
-          </g>
-        </>
-      );
+      return null;
   }
 }
 
