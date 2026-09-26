@@ -173,30 +173,6 @@ export function SmallScreenCenter({
   );
 }
 
-// Dotted grid behind a figure whose SVG viewBox is 16 units wide: a line every
-// 2 units on small screens, and every unit from the `lg` breakpoint up.
-export function GridBackground({ children }: { children: ReactNode }) {
-  return (
-    <div className="w-full [container-type:inline-size]">
-      <div className="relative [--grid-size:12.5cqw] lg:[--grid-size:6.25cqw]">
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute -inset-px p-px bg-origin-content bg-clip-border bg-repeat"
-          style={{
-            backgroundImage: [
-              "radial-gradient(circle at center, rgb(0 0 0 / 0.15) 0.5px, transparent 1px)",
-              "radial-gradient(circle at center, rgb(0 0 0 / 0.15) 0.5px, transparent 1px)",
-            ].join(", "),
-            backgroundSize: "var(--grid-size) 4px, 4px var(--grid-size)",
-            backgroundPosition: "calc(var(--grid-size) / -2) 0px, 0px calc(var(--grid-size) / -2)",
-          }}
-        />
-        <div className="relative">{children}</div>
-      </div>
-    </div>
-  );
-}
-
 export function RouterShape({ badge }: { badge: RouterBadge }) {
   return (
     <>
