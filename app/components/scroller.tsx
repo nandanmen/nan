@@ -11,11 +11,14 @@ import {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
 } from "react";
 import { cn } from "cn";
 
 type Section = {
   index: number;
+  // The section's own copy of the figure, shown below it on small screens.
+  inlineFigure: FigureState;
 };
 
 export type ScrollerEvent = {
@@ -27,18 +30,38 @@ type ScrollerEventListener = (event: ScrollerEvent, index: number) => void;
 
 type AvailableEvents = { index: number; types: string[] } | null;
 
-const ScrollerContext = createContext<{
+type FigureState = {
   activeSection: number;
   listeners: Set<ScrollerEventListener>;
   availableEvents: AvailableEvents;
   setAvailableEvents: Dispatch<SetStateAction<AvailableEvents>>;
-} | null>(null);
+};
+
+const ScrollerContext = createContext<FigureState | null>(null);
 const SectionProvider = createContext<Section | null>(null);
 
 type ScrollerProps = {
   children: ReactNode;
   figure: ReactNode;
 };
+
+// Matches Tailwind's `lg` breakpoint, where the figure sits beside the text.
+const WIDE_QUERY = "(min-width: 64rem)";
+
+function subscribeToWide(onChange: () => void) {
+  const query = window.matchMedia(WIDE_QUERY);
+  query.addEventListener("change", onChange);
+  return () => query.removeEventListener("change", onChange);
+}
+
+/** Whether the Scroller shows one sticky figure beside the text, rather than a figure per section. */
+function useIsWide() {
+  return useSyncExternalStore(
+    subscribeToWide,
+    () => window.matchMedia(WIDE_QUERY).matches,
+    () => false,
+  );
+}
 
 function isSectionDivider(child: ReactNode) {
   if (!isValidElement(child)) return false;
@@ -89,6 +112,30 @@ export function useSection() {
 
 const ACTIVE_THRESHOLD = 0.7;
 
+/** Dotted grid behind a figure, one line every `--grid-size`. */
+function FigureGrid() {
+  return (
+    <div
+      aria-hidden="true"
+      className="pointer-events-none absolute -inset-px p-px"
+      style={{
+        // Give edge dots room to paint while keeping the original grid origin.
+        backgroundOrigin: "content-box",
+        backgroundClip: "border-box",
+        // Center each dotted line on the SVG's grid coordinates.
+        // Offset centered tiles by half a cell so lines start at zero.
+        backgroundImage: [
+          "radial-gradient(circle at center, rgb(0 0 0 / 0.15) 0.5px, transparent 1px)",
+          "radial-gradient(circle at center, rgb(0 0 0 / 0.15) 0.5px, transparent 1px)",
+        ].join(", "),
+        backgroundSize: "var(--grid-size) 4px, 4px var(--grid-size)",
+        backgroundPosition: "calc(var(--grid-size) / -2) 0px, 0px calc(var(--grid-size) / -2)",
+        backgroundRepeat: "repeat, repeat",
+      }}
+    />
+  );
+}
+
 function PaperGutter() {
   return (
     <div aria-hidden="true" className="relative hidden lg:block">
@@ -106,19 +153,21 @@ function PaperGutter() {
 }
 
 export function useScrollerDispatch() {
-  const { index } = useSection();
-  const { listeners } = useScroller();
+  const { index, inlineFigure } = useSection();
+  const scroller = useScroller();
+  const listeners = useIsWide() ? scroller.listeners : inlineFigure.listeners;
   return useCallback(
     (event: ScrollerEvent) => {
       for (const listener of listeners) listener(event, index);
     },
-    [index],
+    [index, listeners],
   );
 }
 
 export function useScrollerCanSend(event: ScrollerEvent) {
-  const { index } = useSection();
-  const { activeSection, availableEvents } = useScroller();
+  const { index, inlineFigure } = useSection();
+  const scroller = useScroller();
+  const { activeSection, availableEvents } = useIsWide() ? scroller : inlineFigure;
   return (
     index === activeSection &&
     availableEvents?.index === index &&
@@ -193,55 +242,77 @@ export function Scroller({ children, figure }: ScrollerProps) {
       <div
         className={cn(
           "[--scroller-gutter-size:32px] [--scroller-padding:calc(var(--spacing)*8)] [--scroller-figure-padding:calc(var(--scroller-padding)*2)]",
-          "grid grid-cols-1 gap-12 lg:grid-cols-[var(--scroller-gutter-size)_minmax(0,1fr)_minmax(0,1fr)_var(--scroller-gutter-size)] lg:gap-0 my-18 first:mt-0 last:mb-0 [&:has(+_[data-scroller])]:mb-0 [[data-scroller]+&]:-mt-2 bg-olive-1 divide-x divide-black/10 shadow w-full max-w-[calc(120ch+var(--scroller-padding)*4+var(--scroller-gutter-size)*2)] mx-auto",
+          "grid grid-cols-1 lg:grid-cols-[var(--scroller-gutter-size)_minmax(0,1fr)_minmax(0,1fr)_var(--scroller-gutter-size)] lg:my-18 first:mt-0 last:mb-0 [&:has(+_[data-scroller])]:mb-0 [[data-scroller]+&]:-mt-2 lg:bg-olive-1 lg:divide-x lg:divide-black/10 lg:shadow w-full max-w-[calc(120ch+var(--scroller-padding)*4+var(--scroller-gutter-size)*2)] mx-auto",
         )}
         data-scroller
         data-full-width
       >
         <PaperGutter />
-        <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,60ch)] p-16">
+        <div className="grid grid-cols-[minmax(0,60ch)] justify-center gap-y-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,60ch)] lg:gap-y-0 lg:p-16">
           {sections.map((section, index) => (
-            <section
-              className="min-h-[45vh] grid gap-y-6 auto-rows-min col-start-2"
+            <ScrollerSection
+              figure={figure}
+              index={index}
               // biome-ignore lint/suspicious/noArrayIndexKey: <explanation>
               key={index}
-              ref={(element) => {
+              sectionRef={(element) => {
                 sectionElements.current[index] = element;
               }}
             >
-              <SectionProvider value={{ index }}>{section}</SectionProvider>
-            </section>
+              {section}
+            </ScrollerSection>
           ))}
         </div>
         <figure
-          className="min-w-0 p-(--scroller-padding)"
+          className="hidden lg:block min-w-0 p-(--scroller-padding)"
           style={{ containerType: "inline-size" }}
         >
           <div className="[--grid-size:12.5cqw] xl:[--grid-size:6.25cqw] [height:round(down,100%,var(--grid-size))] [max-height:round(down,100vh,var(--grid-size))] sticky -top-px">
-            <div
-              aria-hidden="true"
-              className="pointer-events-none absolute -inset-px p-px"
-              style={{
-                // Give edge dots room to paint while keeping the original grid origin.
-                backgroundOrigin: "content-box",
-                backgroundClip: "border-box",
-                // Center each dotted line on the SVG's grid coordinates.
-                // Offset centered tiles by half a cell so lines start at zero.
-                backgroundImage: [
-                  "radial-gradient(circle at center, rgb(0 0 0 / 0.15) 0.5px, transparent 1px)",
-                  "radial-gradient(circle at center, rgb(0 0 0 / 0.15) 0.5px, transparent 1px)",
-                ].join(", "),
-                backgroundSize: "var(--grid-size) 4px, 4px var(--grid-size)",
-                backgroundPosition:
-                  "calc(var(--grid-size) / -2) 0px, 0px calc(var(--grid-size) / -2)",
-                backgroundRepeat: "repeat, repeat",
-              }}
-            />
+            <FigureGrid />
             <div className="sticky h-fit top-[calc(var(--grid-size)*3)]">{figure}</div>
           </div>
         </figure>
         <PaperGutter />
       </div>
     </ScrollerContext>
+  );
+}
+
+function ScrollerSection({
+  children,
+  figure,
+  index,
+  sectionRef,
+}: {
+  children: ReactNode;
+  figure: ReactNode;
+  index: number;
+  sectionRef: (element: HTMLElement | null) => void;
+}) {
+  const [availableEvents, setAvailableEvents] = useState<AvailableEvents>(null);
+  const listeners = useRef(new Set<ScrollerEventListener>()).current;
+  const inlineFigure = useMemo(
+    () => ({ activeSection: index, listeners, availableEvents, setAvailableEvents }),
+    [index, listeners, availableEvents],
+  );
+
+  return (
+    <SectionProvider value={{ index, inlineFigure }}>
+      <section
+        className="lg:min-h-[45vh] grid gap-y-6 auto-rows-min lg:col-start-2"
+        ref={sectionRef}
+      >
+        {children}
+        {/* On small screens, each section shows its own scene right below its text. */}
+        <ScrollerContext value={inlineFigure}>
+          <div className="lg:hidden [container-type:inline-size]">
+            <div className="relative [--grid-size:12.5cqw]">
+              <FigureGrid />
+              <div className="relative">{figure}</div>
+            </div>
+          </div>
+        </ScrollerContext>
+      </section>
+    </SectionProvider>
   );
 }

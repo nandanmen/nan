@@ -46,7 +46,7 @@ export function CodeBlock({ children, ...props }: PreProps) {
   );
 
   return (
-    <pre className="border text-[0.85em] p-4 bg-white" {...props}>
+    <pre className="border text-[0.85em] p-4 bg-white overflow-x-auto" {...props}>
       {content}
     </pre>
   );

@@ -5,6 +5,7 @@ import {
   clearRoute,
   GridBackground,
   LinkFills,
+  NODE_SCALE,
   routeSequence,
   RouterShape,
   type RoutePoint,
@@ -162,12 +163,16 @@ export function RouterChain() {
 
           {computers.map((c) => (
             <g key={c.id} transform={`translate(${c.x} ${c.y})`}>
-              <ComputerShape shape={c.shape} fill={c.fill} stroke={c.stroke} />
+              <g className={NODE_SCALE}>
+                <ComputerShape shape={c.shape} fill={c.fill} stroke={c.stroke} />
+              </g>
             </g>
           ))}
           {Object.values(routers).map((r) => (
             <g key={r.id} data-router={r.id} transform={`translate(${r.x} ${r.y})`}>
-              <RouterShape badge={ROUTER_BADGES[r.id]} />
+              <g className={NODE_SCALE}>
+                <RouterShape badge={ROUTER_BADGES[r.id]} />
+              </g>
             </g>
           ))}
         </svg>
@@ -214,40 +219,44 @@ function VertexLabel({
   targetX: number;
   targetY: number;
 }) {
-  const labelX = targetX + (x - targetX) * LABEL_OFFSET_SCALE;
-  const labelY = targetY + (y - targetY) * LABEL_OFFSET_SCALE;
+  const offsetX = (x - targetX) * LABEL_OFFSET_SCALE;
+  const offsetY = (y - targetY) * LABEL_OFFSET_SCALE;
 
+  // Drawn around the point it labels, so scaling it up on small screens also
+  // moves the label clear of the (equally scaled) shape.
   return (
-    <g>
-      <line
-        x1={labelX}
-        y1={labelY}
-        x2={targetX}
-        y2={targetY}
-        className="text-gray-11"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        vectorEffect="non-scaling-stroke"
-      />
-      <g transform={`translate(${labelX} ${labelY})`}>
-        <rect
-          x="-0.35"
-          y="-0.35"
-          width="0.7"
-          height="0.7"
-          rx="0.08"
-          style={{ fill: "var(--gray-12)" }}
+    <g transform={`translate(${targetX} ${targetY})`}>
+      <g className={NODE_SCALE}>
+        <line
+          x1={offsetX}
+          y1={offsetY}
+          x2={0}
+          y2={0}
+          className="text-gray-11"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          vectorEffect="non-scaling-stroke"
         />
-        <text
-          style={{ fill: "var(--gray-1)" }}
-          className="font-sans"
-          fontSize="0.4"
-          fontWeight="600"
-          textAnchor="middle"
-          dominantBaseline="central"
-        >
-          {text}
-        </text>
+        <g transform={`translate(${offsetX} ${offsetY})`}>
+          <rect
+            x="-0.35"
+            y="-0.35"
+            width="0.7"
+            height="0.7"
+            rx="0.08"
+            style={{ fill: "var(--gray-12)" }}
+          />
+          <text
+            style={{ fill: "var(--gray-1)" }}
+            className="font-sans"
+            fontSize="0.4"
+            fontWeight="600"
+            textAnchor="middle"
+            dominantBaseline="central"
+          >
+            {text}
+          </text>
+        </g>
       </g>
     </g>
   );

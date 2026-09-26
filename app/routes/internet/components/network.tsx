@@ -13,6 +13,10 @@ export type RoutePoint = Point & { routerId?: string };
 export type RouterBadge = { label: string; fill: string; text: string };
 
 export const FILL_COLOR = "var(--gray-12)";
+
+// Shapes, routers and labels are drawn around their own origin. Figures are
+// narrow on small screens, so draw them larger there without moving them.
+export const NODE_SCALE = "max-lg:scale-150";
 const FILL_TRANSITION = { type: "tween", duration: 0.3, ease: "linear" } as const;
 const ROUTER_DOT_DELAY = 0.15;
 const ROUTER_CENTER_DOT = 4;
@@ -71,7 +75,8 @@ export function routeSequence(
 
     const after = path[i + 1];
     if (next.routerId && after) {
-      const dot = (index: number) => `[data-router="${next.routerId}"] [data-router-dot="${index}"]`;
+      const dot = (index: number) =>
+        `[data-router="${next.routerId}"] [data-router-dot="${index}"]`;
       // Light the dots in the order the data crosses the router: in, through the center, out.
       sequence.push([dot(routerDotForDirection(next, prev)), { opacity: [0, 1] }, instant(time)]);
       time += ROUTER_DOT_DELAY;
@@ -102,7 +107,11 @@ export function routeSequence(
 
 // Hides any drawn route and lit router dots.
 export function clearRoute(
-  animate: (selector: string, values: { opacity: number }, options: { duration: number }) => unknown,
+  animate: (
+    selector: string,
+    values: { opacity: number },
+    options: { duration: number },
+  ) => unknown,
 ) {
   animate("[data-link-fill]", { opacity: 0 }, { duration: 0 });
   animate("[data-router-dot]", { opacity: 0 }, { duration: 0 });
@@ -125,12 +134,12 @@ export function LinkFills({ count }: { count: number }) {
   );
 }
 
-// Dotted grid behind a figure whose SVG viewBox is 16 units wide, with a dot
-// at every whole unit.
+// Dotted grid behind a figure whose SVG viewBox is 16 units wide: a line every
+// 2 units on small screens, and every unit from the `lg` breakpoint up.
 export function GridBackground({ children }: { children: ReactNode }) {
   return (
     <div className="w-full [container-type:inline-size]">
-      <div className="relative [--grid-size:6.25cqw]">
+      <div className="relative [--grid-size:12.5cqw] lg:[--grid-size:6.25cqw]">
         <div
           aria-hidden="true"
           className="pointer-events-none absolute -inset-px p-px bg-origin-content bg-clip-border bg-repeat"
@@ -154,7 +163,14 @@ export function RouterShape({ badge }: { badge: RouterBadge }) {
     <>
       {/* Numbered card tucked behind the router, peeking out above it. */}
       <g>
-        <rect x="-0.25" y="-0.92" width="0.5" height="0.72" rx="0.08" style={{ fill: badge.fill }} />
+        <rect
+          x="-0.25"
+          y="-0.92"
+          width="0.5"
+          height="0.72"
+          rx="0.08"
+          style={{ fill: badge.fill }}
+        />
         <text
           y="-0.68"
           style={{ fill: badge.text }}

@@ -6,6 +6,7 @@ import { ScrollerButton } from "../../components/scroller-button";
 import { Scroller } from "../../components/scroller";
 import { Toolbar } from "../../components/toolbar";
 import InternetContent from "./page.mdx";
+import { Aside, Callout, ProblemStatement } from "./components/prose";
 import { InterruptedWorldMap } from "./world-map";
 import { Provider } from "jotai";
 
@@ -27,7 +28,7 @@ export default function Internet() {
   return (
     <main className="text-lg leading-relaxed grid gap-y-24 pb-32">
       <InterruptedWorldMap />
-      <header className="max-w-[60ch] mx-auto grid gap-y-6">
+      <header className="w-full max-w-[calc(60ch+2rem)] px-4 mx-auto grid gap-y-6">
         <h1 className="text-[56px] font-serif">How does the Internet work?</h1>
         <p>
           It's really easy to overlook the way the internet works. In JavaScript, we can make
@@ -52,8 +53,25 @@ export default function Internet() {
                 Scroller,
                 ScrollerButton,
                 Toolbar,
+                Aside,
+                Callout,
+                ProblemStatement,
                 h2: ({ children }: { children: ReactNode }) => (
                   <h2 className="text-2xl font-medium">{children}</h2>
+                ),
+                h3: ({ children }: { children: ReactNode }) => (
+                  <h3 className="text-xl font-medium">{children}</h3>
+                ),
+                ol: ({ children }: { children: ReactNode }) => (
+                  <ol className="grid list-decimal gap-y-2 pl-6">{children}</ol>
+                ),
+                ul: ({ children }: { children: ReactNode }) => (
+                  <ul className="grid list-disc gap-y-2 pl-6">{children}</ul>
+                ),
+                a: ({ children, href }: { children: ReactNode; href?: string }) => (
+                  <a className="underline [overflow-wrap:anywhere]" href={href}>
+                    {children}
+                  </a>
                 ),
                 strong: ({ children }: { children: ReactNode }) => (
                   <strong className="font-medium">{children}</strong>

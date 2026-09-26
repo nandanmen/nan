@@ -10,7 +10,7 @@ import {
 } from "../../../components/scroller";
 import { motion, useAnimate } from "motion/react";
 import { useLayoutEffect, useRef } from "react";
-import { clearRoute, LinkFills, routeSequence } from "./network";
+import { clearRoute, LinkFills, NODE_SCALE, routeSequence } from "./network";
 
 const pentagonScene: SceneDefinition = {
   initial: {
@@ -220,7 +220,9 @@ function ScenePoint({ point }: { point: ScenePoint }) {
       initial={false}
       transition={SWIFT_TRANSITION}
     >
-      <Shape type={point.shape} className={point.className} />
+      <g className={NODE_SCALE}>
+        <Shape type={point.shape} className={point.className} />
+      </g>
     </motion.g>
   );
 }
@@ -292,48 +294,38 @@ function VertexLabel({
   targetX: number;
   targetY: number;
 }) {
-  const labelX = targetX + (x - targetX) * LABEL_OFFSET_SCALE;
-  const labelY = targetY + (y - targetY) * LABEL_OFFSET_SCALE;
+  const offsetX = (x - targetX) * LABEL_OFFSET_SCALE;
+  const offsetY = (y - targetY) * LABEL_OFFSET_SCALE;
 
+  // Drawn around the point it labels, so scaling it up on small screens also
+  // moves the label clear of the (equally scaled) shape.
   return (
-    <g>
-      <motion.line
-        animate={{
-          x1: labelX,
-          y1: labelY,
-          x2: targetX,
-          y2: targetY,
-        }}
-        initial={false}
-        transition={SWIFT_TRANSITION}
-        className="text-gray-11"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        vectorEffect="non-scaling-stroke"
-      />
-      <motion.g
-        animate={{ x: labelX, y: labelY }}
-        initial={false}
-        transition={SWIFT_TRANSITION}
-      >
-        <rect
-          x="-0.35"
-          y="-0.35"
-          width="0.7"
-          height="0.7"
-          rx="0.08"
-          className="fill-gray-12"
+    <motion.g animate={{ x: targetX, y: targetY }} initial={false} transition={SWIFT_TRANSITION}>
+      <g className={NODE_SCALE}>
+        <motion.line
+          animate={{ x1: offsetX, y1: offsetY }}
+          initial={false}
+          transition={SWIFT_TRANSITION}
+          x2={0}
+          y2={0}
+          className="text-gray-11"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          vectorEffect="non-scaling-stroke"
         />
-        <text
-          className="fill-gray-1 font-sans"
-          fontSize="0.4"
-          fontWeight="600"
-          textAnchor="middle"
-          dominantBaseline="central"
-        >
-          {label}
-        </text>
-      </motion.g>
-    </g>
+        <motion.g animate={{ x: offsetX, y: offsetY }} initial={false} transition={SWIFT_TRANSITION}>
+          <rect x="-0.35" y="-0.35" width="0.7" height="0.7" rx="0.08" className="fill-gray-12" />
+          <text
+            className="fill-gray-1 font-sans"
+            fontSize="0.4"
+            fontWeight="600"
+            textAnchor="middle"
+            dominantBaseline="central"
+          >
+            {label}
+          </text>
+        </motion.g>
+      </g>
+    </motion.g>
   );
 }
