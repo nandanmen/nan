@@ -579,7 +579,9 @@ export function PathFinding() {
 
   return (
     <div
-      className="relative w-full max-lg:mt-(--crop-top) max-lg:mb-(--crop-bottom)"
+      // The figure isn't interactive, and on small screens its trimmed-off edges
+      // overlap the text and buttons around it, so let taps through.
+      className="pointer-events-none relative w-full max-lg:mt-(--crop-top) max-lg:mb-(--crop-bottom)"
       style={cropStyle}
     >
       <svg

@@ -141,9 +141,11 @@ export function useScrollerDispatch() {
 }
 
 export function useScrollerCanSend(event: ScrollerEvent) {
-  const { index, inlineFigure } = useSection();
+  const { index } = useSection();
   const scroller = useScroller();
-  const { activeSection, availableEvents } = useIsWide() ? scroller : inlineFigure;
+  // On small screens every section has its own figure, so its controls always work.
+  if (!useIsWide()) return true;
+  const { activeSection, availableEvents } = scroller;
   return (
     index === activeSection &&
     availableEvents?.index === index &&
@@ -320,7 +322,9 @@ function ScrollerSection({
           // stretched to the screen's edges on a darker background.
           <ScrollerContext key="inline-figure" value={inlineFigure}>
             <div className="lg:hidden [container-type:inline-size] mx-[calc(50%-50vw)] bg-gray-3 py-8">
-              <div className="relative [--grid-size:12.5cqw]">{figure}</div>
+              {/* flow-root keeps a figure's negative margins (trimming empty
+                  space) from pulling this box up over the text around it. */}
+              <div className="relative flow-root [--grid-size:12.5cqw]">{figure}</div>
             </div>
           </ScrollerContext>,
         )}
