@@ -253,6 +253,43 @@ export function Scroller({ children, figure }: ScrollerProps) {
   );
 }
 
+/**
+ * Where a section's small-screen figure goes relative to a control that drives
+ * it. Components that drive the figure set this as a static `figurePlacement`.
+ */
+export type FigurePlacement = "before" | "after";
+
+function figurePlacementOf(node: ReactNode): FigurePlacement | null {
+  if (!isValidElement<{ children?: ReactNode }>(node)) return null;
+
+  const type = node.type as { figurePlacement?: FigurePlacement };
+  if (type.figurePlacement) return type.figurePlacement;
+
+  // Controls can be wrapped, e.g. buttons grouped in a toolbar.
+  for (const child of Children.toArray(node.props.children)) {
+    const placement = figurePlacementOf(child);
+    if (placement) return placement;
+  }
+  return null;
+}
+
+/**
+ * Puts a section's small-screen figure next to the first control that drives
+ * it, so the result of pressing it shows up right there, or at the end of the
+ * section if nothing drives it.
+ */
+function placeInlineFigure(children: ReactNode, figure: ReactNode) {
+  const nodes = Children.toArray(children);
+  for (const [index, node] of nodes.entries()) {
+    const placement = figurePlacementOf(node);
+    if (placement) {
+      const at = placement === "before" ? index : index + 1;
+      return [...nodes.slice(0, at), figure, ...nodes.slice(at)];
+    }
+  }
+  return [...nodes, figure];
+}
+
 function ScrollerSection({
   children,
   figure,
@@ -277,14 +314,16 @@ function ScrollerSection({
         className="lg:min-h-[45vh] grid gap-y-6 auto-rows-min lg:col-start-2"
         ref={sectionRef}
       >
-        {children}
-        {/* On small screens, each section shows its own scene right below its text. */}
-        <ScrollerContext value={inlineFigure}>
-          {/* Stretched to the screen's edges on a darker background. */}
-          <div className="lg:hidden [container-type:inline-size] mx-[calc(50%-50vw)] bg-gray-3 py-8">
-            <div className="relative [--grid-size:12.5cqw]">{figure}</div>
-          </div>
-        </ScrollerContext>
+        {placeInlineFigure(
+          children,
+          // On small screens, each section shows its own copy of the figure,
+          // stretched to the screen's edges on a darker background.
+          <ScrollerContext key="inline-figure" value={inlineFigure}>
+            <div className="lg:hidden [container-type:inline-size] mx-[calc(50%-50vw)] bg-gray-3 py-8">
+              <div className="relative [--grid-size:12.5cqw]">{figure}</div>
+            </div>
+          </ScrollerContext>,
+        )}
       </section>
     </SectionProvider>
   );

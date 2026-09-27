@@ -9,13 +9,7 @@ export type ButtonProps = {
   shape?: "square";
 };
 
-export function Button({
-  className,
-  disabled,
-  onClick,
-  children,
-  shape,
-}: ButtonProps) {
+export function Button({ className, disabled, onClick, children, shape }: ButtonProps) {
   return (
     <button
       className={cn(

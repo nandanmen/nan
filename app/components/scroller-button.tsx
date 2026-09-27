@@ -1,7 +1,12 @@
 import type { ReactElement, ReactNode } from "react";
 import { useRender } from "@base-ui/react/use-render";
 import { Button, type ButtonProps } from "./button";
-import { useScrollerCanSend, useScrollerDispatch, type ScrollerEvent } from "./scroller";
+import {
+  useScrollerCanSend,
+  useScrollerDispatch,
+  type FigurePlacement,
+  type ScrollerEvent,
+} from "./scroller";
 
 export type ScrollerButtonProps = Omit<ButtonProps, "disabled" | "onClick"> & {
   onClick: ScrollerEvent;
@@ -30,3 +35,6 @@ export function ScrollerButton({
     },
   });
 }
+
+// On small screens, the figure shows up right below the button that drives it.
+ScrollerButton.figurePlacement = "after" satisfies FigurePlacement;

@@ -9,7 +9,7 @@ import {
 import { cn } from "cn";
 import { Button } from "./button";
 import { Icon } from "./icon";
-import { useScrollerCanSend, useScrollerDispatch } from "./scroller";
+import { useScrollerCanSend, useScrollerDispatch, type FigurePlacement } from "./scroller";
 
 type StepsProps = {
   // Scroller event sent as `{ type: event, step }` whenever the current step changes.
@@ -135,3 +135,7 @@ export function Steps({ event, duration = 1500, children }: StepsProps) {
     </div>
   );
 }
+
+// On small screens, the figure sits right above the steps, so it stays in view
+// while stepping through them.
+Steps.figurePlacement = "before" satisfies FigurePlacement;
