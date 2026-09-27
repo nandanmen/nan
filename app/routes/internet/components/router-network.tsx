@@ -18,6 +18,7 @@ import {
   type RouterBadge,
   LINK_WIDTH,
   SHAPE_STROKE,
+  LabelTag,
 } from "./network";
 
 const scenes: SceneDefinition[] = [
@@ -352,16 +353,7 @@ function VertexLabel({
           initial={false}
           transition={SWIFT_TRANSITION}
         >
-          <rect x="-0.35" y="-0.35" width="0.7" height="0.7" className="fill-gray-12" />
-          <text
-            className="fill-gray-1 font-sans"
-            fontSize="0.4"
-            fontWeight="600"
-            textAnchor="middle"
-            dy="0.35em"
-          >
-            {label}
-          </text>
+          <LabelTag text={label} />
         </motion.g>
       </g>
     </motion.g>

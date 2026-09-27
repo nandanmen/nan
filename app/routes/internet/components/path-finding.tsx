@@ -15,6 +15,7 @@ import {
   routeSequence,
   SHAPE_STROKE,
   type RoutePoint,
+  LabelTag,
 } from "./network";
 
 // Three networks connected in a chain, R1 — R2 — R3, across three scroller sections:
@@ -99,7 +100,7 @@ const computers: Computer[] = [
 const SECTION_EVENTS = [["send-packet"], ["announce"], ["announce", "forward"]];
 
 // The top and bottom of each section's content in the viewBox on small screens,
-// where shapes are drawn larger: the labelled computers in the first, and the
+// with shapes drawn at their larger size: the labelled computers in the first, and the
 // routers and their routing tables (up to three rows) in the others.
 const SMALL_SCREEN_CROP: [number, number][] = [
   [2.5, 13.5],
@@ -164,6 +165,11 @@ const LINK_OVERLAP = 0.02;
 const DIRECT_LINK_TOP = 6;
 const DIRECT_LINK_RADIUS = 0.4;
 const DIRECT_LINK_CORNER_SAMPLES = 8;
+
+// Announcement packets are smaller than a router, outline included, so it
+// hides them completely as they pass behind it.
+const PACKET_WIDTH = 0.8;
+const PACKET_HEIGHT = 0.44;
 
 // Announcements travel this many seconds per unit of link.
 const ANNOUNCEMENT_SECONDS_PER_UNIT = 0.1;
@@ -567,6 +573,12 @@ export function PathFinding() {
   const move: Transition = snap ? INSTANT : SWIFT_TRANSITION;
   const fade: Transition = snap ? INSTANT : FADE_TRANSITION;
   const details: Transition = expanding ? EXPAND.details : fade;
+  // Anything that disappears, whether scrolling between sections or stepping
+  // back, goes away at once; only things appearing or moving animate.
+  const unlessHiding = (visible: boolean, transition: Transition): Transition =>
+    visible ? transition : INSTANT;
+  const computersShown = sceneIndex === 0;
+  const directLinkShown = sceneIndex === 2;
 
   const routerX = (id: RouterId) =>
     sceneIndex === 0 ? CHAIN_X[id] : sceneIndex === 1 && !linked ? START_X[id] : END_X[id];
@@ -614,8 +626,11 @@ export function PathFinding() {
               x1={c.position.x}
               y1={c.position.y}
               initial={false}
-              animate={{ x2: routerX(c.router), opacity: sceneIndex === 0 ? 1 : 0 }}
-              transition={SWIFT_TRANSITION}
+              animate={{ x2: routerX(c.router), opacity: computersShown ? 1 : 0 }}
+              transition={{
+                ...SWIFT_TRANSITION,
+                opacity: unlessHiding(computersShown, FADE_TRANSITION),
+              }}
               y2={ROUTER_Y}
               vectorEffect="non-scaling-stroke"
               strokeWidth={LINK_WIDTH}
@@ -645,7 +660,7 @@ export function PathFinding() {
                   x1: anchor,
                   x2: linked ? middleX + toward * LINK_OVERLAP : anchor,
                 }}
-                transition={linkingUp ? LINK_UP.link : move}
+                transition={unlessHiding(linked, linkingUp ? LINK_UP.link : move)}
                 y1={ROUTER_Y}
                 y2={ROUTER_Y}
                 vectorEffect="non-scaling-stroke"
@@ -656,30 +671,35 @@ export function PathFinding() {
           <motion.path
             d={directLinkPath()}
             initial={false}
-            animate={{ pathLength: sceneIndex === 2 ? 1 : 0, opacity: sceneIndex === 2 ? 1 : 0 }}
-            transition={{ duration: 0.5, ease: "easeInOut" }}
+            animate={{
+              pathLength: directLinkShown ? 1 : 0,
+              opacity: directLinkShown ? 1 : 0,
+            }}
+            transition={unlessHiding(directLinkShown, { duration: 0.5, ease: "easeInOut" })}
             // Drawing along the path needs a stroke in viewBox units rather than
             // a non-scaling one, so convert the link width.
             strokeWidth={LINK_WIDTH / pixelsPerUnit}
           />
-          {ROUTER_IDS.map((id) => (
-            <motion.line
-              key={`table-link-${id}`}
-              initial={false}
-              animate={{
-                x1: routerX(id),
-                x2: routerX(id),
-                opacity: showTables && (id !== "r3" || expanded) ? 1 : 0,
-              }}
-              transition={id === "r3" ? { ...move, opacity: details } : move}
-              y1={ROUTER_Y + ROUTER_SIZE / 2}
-              y2={TABLE_TOP}
-              stroke="black"
-              strokeDasharray="4 3"
-              vectorEffect="non-scaling-stroke"
-              strokeWidth="1"
-            />
-          ))}
+          {ROUTER_IDS.map((id) => {
+            const shown = showTables && (id !== "r3" || expanded);
+            return (
+              <motion.line
+                key={`table-link-${id}`}
+                initial={false}
+                animate={{ x1: routerX(id), x2: routerX(id), opacity: shown ? 1 : 0 }}
+                transition={{
+                  ...move,
+                  opacity: unlessHiding(shown, id === "r3" ? details : fade),
+                }}
+                y1={ROUTER_Y + ROUTER_SIZE / 2}
+                y2={TABLE_TOP}
+                stroke="black"
+                strokeDasharray="4 3"
+                vectorEffect="non-scaling-stroke"
+                strokeWidth="1"
+              />
+            );
+          })}
         </g>
 
         {/* Lines that fill in the route as data is sent in the first section. */}
@@ -737,8 +757,8 @@ export function PathFinding() {
               <motion.g
                 key={`label-${c.id}`}
                 initial={false}
-                animate={{ opacity: sceneIndex === 0 ? 1 : 0 }}
-                transition={FADE_TRANSITION}
+                animate={{ opacity: computersShown ? 1 : 0 }}
+                transition={unlessHiding(computersShown, FADE_TRANSITION)}
               >
                 <VertexLabel
                   text={c.label.text}
@@ -755,8 +775,8 @@ export function PathFinding() {
           <motion.g
             key={c.id}
             initial={false}
-            animate={{ x: c.position.x, y: c.position.y, opacity: sceneIndex === 0 ? 1 : 0 }}
-            transition={FADE_TRANSITION}
+            animate={{ x: c.position.x, y: c.position.y, opacity: computersShown ? 1 : 0 }}
+            transition={unlessHiding(computersShown, FADE_TRANSITION)}
           >
             <g className={NODE_SCALE}>
               <ComputerShape shape={c.shape} fill={c.fill} stroke={c.stroke} />
@@ -792,14 +812,14 @@ export function PathFinding() {
             <motion.g
               initial={false}
               animate={expanded ? { opacity: 1, y: 0 } : { opacity: 0, y: LABEL_RISE }}
-              transition={details}
+              transition={unlessHiding(expanded, details)}
             >
               <BadgeCard badge={ROUTER_BADGES.r3} />
             </motion.g>
             <motion.g
               initial={false}
               animate={{ scale: router3Scale }}
-              transition={linkingUp ? LINK_UP.square : move}
+              transition={unlessHiding(linked, linkingUp ? LINK_UP.square : move)}
               style={{ transformBox: "fill-box", transformOrigin: "center" }}
             >
               <RouterFrame />
@@ -807,7 +827,7 @@ export function PathFinding() {
             <motion.g
               initial={false}
               animate={{ opacity: expanded ? 1 : 0 }}
-              transition={expanding ? EXPAND.dots : fade}
+              transition={unlessHiding(expanded, expanding ? EXPAND.dots : fade)}
             >
               <RouterDots badge={ROUTER_BADGES.r3} />
             </motion.g>
@@ -826,7 +846,7 @@ export function PathFinding() {
               animate={
                 visible ? { opacity: 1, y: 0 } : { opacity: 0, y: id === "r3" ? -TABLE_DROP_PX : 0 }
               }
-              transition={id === "r3" ? details : fade}
+              transition={unlessHiding(visible, id === "r3" ? details : fade)}
             >
               <RoutingTable x={routerX(id)} routes={shownTables[id]} transition={move} />
             </motion.div>
@@ -880,18 +900,21 @@ function AnnouncementBadge({
     <motion.g style={{ x, y }}>
       <g className={NODE_SCALE}>
         <rect
-          x="-0.5"
-          y="-0.28"
-          width="1"
-          height="0.56"
-          style={{ fill: color, stroke: "white" }}
+          x={-PACKET_WIDTH / 2}
+          y={-PACKET_HEIGHT / 2}
+          width={PACKET_WIDTH}
+          height={PACKET_HEIGHT}
+          style={{ fill: color }}
+          // The outline separates the badge from the links it travels over, so
+          // it matches the figure's background: white, or grey on small screens.
+          className="stroke-white max-lg:stroke-gray-3"
           strokeWidth="2"
           vectorEffect="non-scaling-stroke"
         />
         <text
           style={{ fill: "white" }}
           className="font-sans"
-          fontSize="0.32"
+          fontSize="0.26"
           fontWeight="700"
           textAnchor="middle"
           dy="0.35em"
@@ -919,9 +942,10 @@ function RoutingTable({
 
   return (
     <motion.div
-      // Centered with `translate` rather than `transform`: browsers apply `transform`
-      // after `scale`, which would scale the offset too on small screens.
-      className="absolute w-max origin-top -translate-x-1/2 overflow-hidden whitespace-nowrap border border-black bg-white font-sans text-gray-12 max-lg:scale-150"
+      // Drawn as large as the routers. Centered with `translate` rather than
+      // `transform`: browsers apply `transform` after `scale`, which would scale
+      // the offset too.
+      className="absolute w-max origin-top -translate-x-1/2 overflow-hidden whitespace-nowrap border border-black bg-white font-sans text-gray-12 scale-150"
       initial={false}
       animate={{ left: `${(x / VIEW_SIZE) * 100}%` }}
       transition={transition}
@@ -1111,17 +1135,7 @@ function VertexLabel({
           vectorEffect="non-scaling-stroke"
         />
         <g transform={`translate(${offsetX} ${offsetY})`}>
-          <rect x="-0.35" y="-0.35" width="0.7" height="0.7" style={{ fill: "var(--gray-12)" }} />
-          <text
-            style={{ fill: "var(--gray-1)" }}
-            className="font-sans"
-            fontSize="0.4"
-            fontWeight="600"
-            textAnchor="middle"
-            dy="0.35em"
-          >
-            {text}
-          </text>
+          <LabelTag text={text} />
         </g>
       </g>
     </g>

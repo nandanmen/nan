@@ -14,13 +14,12 @@ export type RouterBadge = { label: string; fill: string; text: string };
 
 export const FILL_COLOR = "var(--gray-12)";
 
-// Shapes, routers and labels are drawn around their own origin. Figures are
-// narrow on small screens, so draw them larger there without moving them.
-export const NODE_SCALE = "max-lg:scale-150";
+// Shapes, routers and labels are drawn around their own origin, so they can be
+// drawn larger than their grid spacing without moving them.
+export const NODE_SCALE = "scale-150";
 
-// Outlines of routers and other shapes: 1px, thickened on small screens where
-// shapes are drawn larger.
-export const SHAPE_STROKE = "[stroke-width:1] max-lg:[stroke-width:1.5]";
+// Outlines of routers and other shapes, thickened to suit their larger size.
+export const SHAPE_STROKE = "[stroke-width:1.5]";
 
 // Link thickness in pixels.
 export const LINK_WIDTH = 4;
@@ -229,6 +228,39 @@ export function RouterShape({ badge }: { badge: RouterBadge }) {
           />
         </g>
       ))}
+    </>
+  );
+}
+
+// Labels on points are sized like a router's numbered card: as tall as the part
+// peeking out above the router, with the same text, and wide enough to fit it.
+const LABEL_HEIGHT = 0.48;
+const LABEL_FONT_SIZE = 0.28;
+const LABEL_MIN_WIDTH = 0.5;
+const LABEL_CHARACTER_WIDTH = 0.16;
+
+/** A point's label tag, drawn around its own origin. */
+export function LabelTag({ text }: { text: string }) {
+  const width = Math.max(LABEL_MIN_WIDTH, LABEL_CHARACTER_WIDTH * (text.length + 1));
+  return (
+    <>
+      <rect
+        x={-width / 2}
+        y={-LABEL_HEIGHT / 2}
+        width={width}
+        height={LABEL_HEIGHT}
+        style={{ fill: "var(--gray-12)" }}
+      />
+      <text
+        style={{ fill: "var(--gray-1)" }}
+        className="font-sans"
+        fontSize={LABEL_FONT_SIZE}
+        fontWeight="700"
+        textAnchor="middle"
+        dy="0.35em"
+      >
+        {text}
+      </text>
     </>
   );
 }

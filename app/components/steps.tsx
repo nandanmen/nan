@@ -7,8 +7,8 @@ import {
   type ReactNode,
 } from "react";
 import { cn } from "cn";
-import { Button } from "./button";
 import { Icon } from "./icon";
+import { Toolbar } from "./toolbar";
 import { useScrollerCanSend, useScrollerDispatch, type FigurePlacement } from "./scroller";
 
 type StepsProps = {
@@ -75,6 +75,11 @@ export function Steps({ event, duration = 1500, children }: StepsProps) {
     setPlaying(true);
   };
 
+  const reset = () => {
+    setPlaying(false);
+    goTo(0);
+  };
+
   const select = (next: number) => {
     if (!enabled || next === step) return;
     setPlaying(false);
@@ -82,7 +87,21 @@ export function Steps({ event, duration = 1500, children }: StepsProps) {
   };
 
   return (
-    <div className="relative">
+    <div className="grid gap-y-3">
+      <Toolbar>
+        <Toolbar.Button className="gap-x-1.5" disabled={!enabled} onClick={play}>
+          <Icon type={playing ? "pause" : "play"} size={16} />
+          {playing ? "Pause" : "Play"}
+        </Toolbar.Button>
+        <Toolbar.Button
+          disabled={!enabled || (step === 0 && !playing)}
+          onClick={reset}
+          shape="square"
+        >
+          <span className="sr-only">Reset</span>
+          <Icon type="reset" />
+        </Toolbar.Button>
+      </Toolbar>
       <ol className="overflow-hidden rounded border border-black/10 bg-black/[0.03]">
         {items.map((item, index) => {
           const number = index + 1;
@@ -106,7 +125,7 @@ export function Steps({ event, duration = 1500, children }: StepsProps) {
                 aria-hidden="true"
                 className={cn(
                   "absolute right-4 w-3 overflow-hidden border-x border-black/10 bg-gray-3",
-                  isFirst ? "top-0" : "-top-px",
+                  isFirst ? "top-4 rounded-t border-t" : "-top-px",
                   isLast ? "bottom-4 rounded-b border-b" : "bottom-0",
                 )}
               >
@@ -123,15 +142,6 @@ export function Steps({ event, duration = 1500, children }: StepsProps) {
           );
         })}
       </ol>
-      <Button
-        className="absolute -top-4 right-1.5 h-8"
-        disabled={!enabled}
-        onClick={play}
-        shape="square"
-      >
-        <span className="sr-only">{playing ? "Pause" : "Play"}</span>
-        <Icon type={playing ? "pause" : "play"} size={16} />
-      </Button>
     </div>
   );
 }
