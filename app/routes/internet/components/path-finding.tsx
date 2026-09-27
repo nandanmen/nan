@@ -16,6 +16,8 @@ import {
   SHAPE_STROKE,
   type RoutePoint,
   LabelTag,
+  LinkFills,
+  RoutePointShape,
 } from "./network";
 
 // Three networks connected in a chain, R1 — R2 — R3, across four scroller sections:
@@ -535,9 +537,9 @@ export function PathFinding() {
   const sendPacket = () => {
     reset();
     const path: RoutePoint[] = [
-      computers[0].position,
+      { ...computers[0].position, id: computers[0].id },
       ...ROUTER_IDS.map((id) => ({ x: CHAIN_X[id], y: ROUTER_Y, routerId: id })),
-      computers[4].position,
+      { ...computers[4].position, id: computers[4].id },
     ];
     routeAnimation.current = animate(routeSequence(path), {
       onComplete: () => {
@@ -708,17 +710,16 @@ export function PathFinding() {
         </g>
 
         {/* Lines that fill in the route as data is sent in the first section. */}
-        <g style={{ stroke: "var(--gray-12)" }}>
-          {Array.from({ length: computers.length - 1 }, (_, i) => (
-            <motion.line
-              key={i}
-              data-link-fill={i}
-              initial={{ opacity: 0 }}
-              vectorEffect="non-scaling-stroke"
-              strokeWidth={LINK_WIDTH}
+        <LinkFills
+          count={computers.length - 1}
+          head={
+            <ComputerShape
+              shape={computers[4].shape}
+              fill={computers[4].fill}
+              stroke={computers[4].stroke}
             />
-          ))}
-        </g>
+          }
+        />
 
         {/* Ticks marking where the two halves of the R2 — R3 link meet. */}
         {[-1, 1].map((side) => {
@@ -784,7 +785,9 @@ export function PathFinding() {
             transition={unlessHiding(computersShown, FADE_TRANSITION)}
           >
             <g className={NODE_SCALE}>
-              <ComputerShape shape={c.shape} fill={c.fill} stroke={c.stroke} />
+              <RoutePointShape id={c.id}>
+                <ComputerShape shape={c.shape} fill={c.fill} stroke={c.stroke} />
+              </RoutePointShape>
             </g>
           </motion.g>
         ))}

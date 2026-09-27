@@ -54,15 +54,15 @@ We'll call this central computer a **router** because, er, it routes.
 
 Let's introduce another network to the mix.
 
-Here, we have two networks, 1 and 2, each with two connected computers. Both router are connected to each other. In this setup, the routers only know about the computers in their own network, and not the computers in the other network. **How can a computer from one network send data to another network?**
+Here, we have two networks, <Router network={1} /> and <Router network={2} />, each with two connected computers. Both router are connected to each other. In this setup, the routers only know about the computers in their own network, and not the computers in the other network. **How can a computer from one network send data to another network?**
 
-One option is to have every router know about every computer, including those not in its own network. Here, both router 1 and router 2 know about all four computers in the Internet.
+One option is to have every router know about every computer, including those not in its own network. Here, both <Router network={1} /> and <Router network={2} /> know about all four computers in the Internet.
 
-If computer 1 wants to send data to computer 4:
+If <Computer shape="circle" network={1} label="Computer 1" /> wants to send data to <Computer shape="triangle" network={2} label="Computer 4" />:
 
-1. Computer 1 will send it to router 1, telling it to forward to computer 4;
-2. Router 1 sees that computer 4 belongs to router 2 and sends it to router 2;
-3. Router 2 sends it to computer 4.
+1. <Computer shape="circle" network={1} label="Computer 1" /> will send it to <Router network={1} />, telling it to forward to <Computer shape="triangle" network={2} label="Computer 4" />;
+2. <Router network={1} /> sees that <Computer shape="triangle" network={2} label="Computer 4" /> belongs to <Router network={2} /> and sends it to <Router network={2} />;
+3. <Router network={2} /> sends it to <Computer shape="triangle" network={2} label="Computer 4" />.
 
 <ScrollerButton onClick={{ type: "send-packet", from: "one", to: "four" }}>Send data</ScrollerButton>
 

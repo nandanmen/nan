@@ -6,19 +6,22 @@ import {
 } from "../../../hooks/use-visual";
 import { useScrollerEvent, type ScrollerEvent } from "../../../components/scroller";
 import { useAnimate } from "motion/react";
-import { useLayoutEffect, useRef } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import {
   clearRoute,
   LinkFills,
   NODE_SCALE,
   routeSequence,
   RouterShape,
+  tableLookup,
+  type RouterLookup,
   SmallScreenCenter,
   type RoutePoint,
   type RouterBadge,
   LINK_WIDTH,
   SHAPE_STROKE,
   LabelTag,
+  RoutePointShape,
 } from "./network";
 
 const scenes: SceneDefinition[] = [
@@ -44,8 +47,8 @@ const routerNetworkVisual: Visual = {
   points: {
     one: { shape: "circle", className: "fill-blue-7", label: "1" },
     two: { shape: "square", className: "fill-yellow-10", label: "2" },
-    three: { shape: "triangle", className: "fill-red-8", label: "3" },
-    four: { shape: "circle", className: "fill-cyan-9", label: "2.1" },
+    three: { shape: "circle", className: "fill-cyan-9", label: "3" },
+    four: { shape: "triangle", className: "fill-red-8", label: "2.1" },
     five: { shape: "diamond", className: "fill-green-9", label: "2.2" },
     routerOne: { shape: "router", className: "fill-white", label: "R1" },
     routerTwo: { shape: "router", className: "fill-white", label: "R2" },
@@ -173,8 +176,11 @@ export function RouterNetwork() {
   const scene = useVisual(routerNetworkVisual);
   const [scope, animate] = useAnimate();
   const animationRef = useRef<{ stop: () => void } | null>(null);
+  // Where the route being drawn is headed, shown at its growing end.
+  const [destination, setDestination] = useState<string | null>(null);
 
   const links = getConnections(scene);
+  const hasSecondNetwork = scene.some((point) => point.id === "routerTwo");
 
   useScrollerEvent((event) => {
     if (!isSendPacketEvent(event)) return;
@@ -186,7 +192,15 @@ export function RouterNetwork() {
 
     animationRef.current?.stop();
     clearRoute(animate);
-    animationRef.current = animate(routeSequence(route), {
+    setDestination(to.id);
+    // Routers with a routing table look the destination up in it on the way through.
+    const lookup: RouterLookup = (routerId, at, destination) => {
+      const routes = hasSecondNetwork ? ROUTING_TABLES[routerId] : undefined;
+      if (!routes) return null;
+      const match = routes.findIndex((route) => route.to === (destination as ScenePoint).id);
+      return tableLookup(routerId, at, routes.length, match);
+    };
+    animationRef.current = animate(routeSequence(route, { lookup }), {
       onComplete: () => {
         animationRef.current = null;
       },
@@ -202,7 +216,6 @@ export function RouterNetwork() {
     clearRoute(animate);
   }, [layoutKey, animate]);
 
-  const hasSecondNetwork = scene.some((point) => point.id === "routerTwo");
   // With two networks, computers take their network's color.
   const points = hasSecondNetwork
     ? scene.map((point) =>
@@ -214,6 +227,7 @@ export function RouterNetwork() {
             },
       )
     : scene;
+  const head = points.find((point) => point.id === destination);
 
   return (
     <div className="w-full">
@@ -255,7 +269,10 @@ export function RouterNetwork() {
                   vectorEffect="non-scaling-stroke"
                 />
               ))}
-          <LinkFills count={links.length} />
+          <LinkFills
+            count={links.length}
+            head={head && <Shape type={head.shape} className={head.className} />}
+          />
           {scene.map(
             (point) =>
               point.label && (
@@ -278,6 +295,7 @@ export function RouterNetwork() {
               .map((router) => (
                 <RoutingTable
                   key={`${router.id}-table`}
+                  routerId={router.id}
                   x={router.x}
                   y={router.y + TABLE_OFFSET}
                   routes={ROUTING_TABLES[router.id]}
@@ -301,7 +319,9 @@ function ScenePoint({ point }: { point: ScenePoint }) {
         {point.shape === "router" ? (
           <RouterShape badge={ROUTER_BADGES[point.id]} />
         ) : (
-          <Shape type={point.shape} className={point.className} />
+          <RoutePointShape id={point.id}>
+            <Shape type={point.shape} className={point.className} />
+          </RoutePointShape>
         )}
       </g>
     </g>
@@ -355,11 +375,13 @@ function Shape({ type, className }: { type: ScenePoint["shape"]; className?: str
 // A table of which router to send each computer's data to, hanging from its
 // top-center at (x, y).
 function RoutingTable({
+  routerId,
   x,
   y,
   routes,
   points,
 }: {
+  routerId: string;
   x: number;
   y: number;
   routes: { to: string; via: string }[];
@@ -373,17 +395,9 @@ function RoutingTable({
   const arrowHead = 0.09;
 
   return (
-    <g transform={`translate(${x} ${y})`}>
+    <g transform={`translate(${x} ${y})`} data-lookup={routerId}>
       <g className={`${NODE_SCALE} font-sans`}>
-        <rect
-          x={left}
-          width={TABLE_WIDTH}
-          height={height}
-          fill="white"
-          stroke="black"
-          strokeWidth="1"
-          vectorEffect="non-scaling-stroke"
-        />
+        <rect x={left} width={TABLE_WIDTH} height={height} fill="white" />
         {routes.map((route, index) => {
           const top = index * TABLE_ROW_HEIGHT;
           const middle = top + TABLE_ROW_HEIGHT / 2;
@@ -391,6 +405,16 @@ function RoutingTable({
           const computer = points.find((point) => point.id === route.to);
           return (
             <g key={route.to}>
+              {/* Highlights the row as the router checks it during a lookup. */}
+              <rect
+                data-lookup-row={index}
+                x={left}
+                y={top}
+                width={TABLE_WIDTH}
+                height={TABLE_ROW_HEIGHT}
+                style={{ fill: "var(--gray-4)" }}
+                opacity="0"
+              />
               {index > 0 && (
                 <line
                   x1={left}
@@ -440,6 +464,16 @@ function RoutingTable({
             </g>
           );
         })}
+        {/* The border goes on top, so highlighted rows don't cover it. */}
+        <rect
+          x={left}
+          width={TABLE_WIDTH}
+          height={height}
+          fill="none"
+          stroke="black"
+          strokeWidth="1"
+          vectorEffect="non-scaling-stroke"
+        />
       </g>
     </g>
   );

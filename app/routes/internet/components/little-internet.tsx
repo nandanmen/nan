@@ -6,7 +6,7 @@ import {
 } from "../../../hooks/use-visual";
 import { useScrollerEvent, type ScrollerEvent } from "../../../components/scroller";
 import { motion, useAnimate } from "motion/react";
-import { useLayoutEffect, useRef } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import {
   clearRoute,
   LinkFills,
@@ -16,6 +16,7 @@ import {
   LINK_WIDTH,
   SHAPE_STROKE,
   LabelTag,
+  RoutePointShape,
 } from "./network";
 
 const pentagonScene: SceneDefinition = {
@@ -128,6 +129,8 @@ export function LittleInternet() {
   const previousPoints = useRef(new Map<string, ScenePoint>());
   const [scope, animate] = useAnimate();
   const animationRef = useRef<{ stop: () => void } | null>(null);
+  // Where the route being drawn is headed, shown at its growing end.
+  const [destination, setDestination] = useState<string | null>(null);
 
   useScrollerEvent((event) => {
     if (!isSendPacketEvent(event)) return;
@@ -139,6 +142,7 @@ export function LittleInternet() {
 
     animationRef.current?.stop();
     clearRoute(animate);
+    setDestination(to.id);
     animationRef.current = animate(routeSequence([from, to], { retract: true }), {
       onComplete: () => {
         animationRef.current = null;
@@ -158,6 +162,7 @@ export function LittleInternet() {
     clearRoute(animate);
   }, [layoutKey, animate]);
   const links = scene.flatMap((from, index) => scene.slice(index + 1).map((to) => ({ from, to })));
+  const head = scene.find((point) => point.id === destination);
   return (
     <div className="w-full">
       <svg
@@ -191,7 +196,10 @@ export function LittleInternet() {
               />
             ))}
           </g>
-          <LinkFills count={1} />
+          <LinkFills
+            count={1}
+            head={head && <Shape type={head.shape} className={head.className} />}
+          />
           {scene.map(
             (point) =>
               point.label && (
@@ -218,7 +226,9 @@ function ScenePoint({ point }: { point: ScenePoint }) {
   return (
     <motion.g animate={{ x: point.x, y: point.y }} initial={false} transition={SWIFT_TRANSITION}>
       <g className={NODE_SCALE}>
-        <Shape type={point.shape} className={point.className} />
+        <RoutePointShape id={point.id}>
+          <Shape type={point.shape} className={point.className} />
+        </RoutePointShape>
       </g>
     </motion.g>
   );

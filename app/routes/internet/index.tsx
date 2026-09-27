@@ -7,7 +7,7 @@ import { Scroller } from "../../components/scroller";
 import { Steps } from "../../components/steps";
 import { Toolbar } from "../../components/toolbar";
 import InternetContent from "./page.mdx";
-import { Aside, Callout, ProblemStatement } from "./components/prose";
+import { Aside, Callout, Computer, ProblemStatement, Router } from "./components/prose";
 import { InterruptedWorldMap } from "./world-map";
 import { Provider } from "jotai";
 
@@ -59,6 +59,8 @@ export default function Internet() {
                 Toolbar,
                 Aside,
                 Callout,
+                Computer,
+                Router,
                 ProblemStatement,
                 h2: ({ children }: { children: ReactNode }) => (
                   <h2 className="text-2xl font-medium">{children}</h2>
