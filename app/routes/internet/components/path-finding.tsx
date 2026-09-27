@@ -96,7 +96,7 @@ const computers: Computer[] = [
 ];
 
 // Buttons each section's text can use.
-const SECTION_EVENTS = [["send-packet"], ["announce"], ["announce"]];
+const SECTION_EVENTS = [["send-packet"], ["announce"], ["announce", "forward"]];
 
 // The top and bottom of each section's content in the viewBox on small screens,
 // where shapes are drawn larger: the labelled computers in the first, and the
@@ -221,6 +221,13 @@ function tablesAfter(step: number): Record<RouterId, Route[]> {
 }
 
 const NO_ROUTES: Record<RouterId, Route[]> = { r1: [], r2: [], r3: [] };
+
+// In the last section, what R1 and R2 have learned once R3 has announced 3.x to both.
+const AFTER_DIRECT_ANNOUNCEMENT: Record<RouterId, Route[]> = {
+  r1: [{ prefix: "3.x", via: "r3" }],
+  r2: [{ prefix: "3.x", via: "r3" }],
+  r3: [],
+};
 
 // The network each prefix belongs to, which colors its announcements.
 const PREFIX_ROUTER: Record<string, RouterId> = { "1.x": "r1", "2.x": "r2", "3.x": "r3" };
@@ -536,9 +543,15 @@ export function PathFinding() {
     } else if (event.type === "announce" && sceneIndex === 1 && typeof event.step === "number") {
       goToStep(event.step);
     } else if (event.type === "announce" && sceneIndex === 2) {
-      // R3 tells both its neighbors it can receive 3.x, and R2 also passes it on to R1.
+      // R3 tells both its neighbors it can receive 3.x.
       reset();
-      pulseThenSend("r3", ["r2", "r1"], ["3.x"], { r2: ["r1"] });
+      pulseThenSend("r3", ["r2", "r1"], ["3.x"]);
+    } else if (event.type === "forward" && sceneIndex === 2) {
+      // Not knowing R1 already heard from R3, R2 passes 3.x on to R1 too,
+      // starting from where R3's announcement left the tables.
+      reset();
+      setLearned(AFTER_DIRECT_ANNOUNCEMENT);
+      pulseThenSend("r2", ["r1"], ["3.x"]);
     }
   });
 
