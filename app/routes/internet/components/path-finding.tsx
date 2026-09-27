@@ -106,6 +106,10 @@ const FADE_TRANSITION = { duration: 0.3 } as const;
 const INSTANT = { duration: 0 } as const;
 const LABEL_OFFSET_SCALE = 0.75;
 
+// Outlines of routers and computers: 1px, thickened on small screens to match
+// the (scaled-up) routing table borders there.
+const SHAPE_STROKE = "[stroke-width:1] max-lg:[stroke-width:1.5]";
+
 // Router 3 starts up in two stages: it appears as a small square that pushes the
 // others left and links up to router 2, then expands into a full router.
 type StartupStage = 0 | 1 | 2;
@@ -892,14 +896,15 @@ function RoutingTable({
 
   return (
     <motion.div
-      className="absolute w-max origin-top overflow-hidden whitespace-nowrap border border-black bg-white font-sans text-gray-12 max-lg:scale-150"
+      // Centered with `translate` rather than `transform`: browsers apply `transform`
+      // after `scale`, which would scale the offset too on small screens.
+      className="absolute w-max origin-top -translate-x-1/2 overflow-hidden whitespace-nowrap border border-black bg-white font-sans text-gray-12 max-lg:scale-150"
       initial={false}
       animate={{ left: `${(x / VIEW_SIZE) * 100}%` }}
       transition={transition}
       style={{
         top: `calc(${(TABLE_TOP / VIEW_SIZE) * 100}% - 1px)`,
         borderStyle: routes.length === 0 ? "dashed" : "solid",
-        transform: "translateX(-50%)",
         fontSize: `${0.4 * cqwPerUnit}cqw`,
       }}
     >
@@ -993,7 +998,7 @@ function RouterFrame() {
       x={-ROUTER_SIZE / 2}
       y={-ROUTER_SIZE / 2}
       style={{ fill: "white", stroke: "var(--gray-12)" }}
-      strokeWidth="1"
+      className={SHAPE_STROKE}
       vectorEffect="non-scaling-stroke"
     />
   );
@@ -1031,7 +1036,7 @@ function RouterDots({ badge }: { badge: RouterBadge }) {
 function ComputerShape({ shape, fill, stroke }: { shape: Shape; fill: string; stroke: string }) {
   const common = {
     style: { fill, stroke },
-    strokeWidth: 1,
+    className: SHAPE_STROKE,
     vectorEffect: "non-scaling-stroke" as const,
   };
   const h = Math.sqrt(3) / 2;

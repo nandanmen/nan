@@ -224,7 +224,7 @@ export function Scroller({ children, figure }: ScrollerProps) {
         data-full-width
       >
         <PaperGutter />
-        <div className="grid grid-cols-[minmax(0,60ch)] justify-center gap-y-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,60ch)] lg:gap-y-0 lg:p-16">
+        <div className="grid grid-cols-[minmax(0,60ch)] justify-center gap-y-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,60ch)] lg:gap-y-16 lg:p-16">
           {sections.map((section, index) => (
             <ScrollerSection
               figure={figure}
