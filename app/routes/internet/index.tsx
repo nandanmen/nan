@@ -4,6 +4,7 @@ import { CodeBlock } from "./code-block";
 import { Icon } from "../../components/icon";
 import { ScrollerButton } from "../../components/scroller-button";
 import { Scroller } from "../../components/scroller";
+import { Steps } from "../../components/steps";
 import { Toolbar } from "../../components/toolbar";
 import InternetContent from "./page.mdx";
 import { Aside, Callout, ProblemStatement } from "./components/prose";
@@ -29,7 +30,9 @@ export default function Internet() {
     <main className="text-lg leading-relaxed grid gap-y-24 pb-32">
       <InterruptedWorldMap />
       <header className="w-full max-w-[calc(60ch+2rem)] px-4 mx-auto grid gap-y-6">
-        <h1 className="text-[56px] font-serif max-lg:leading-[1.05]">How does the Internet work?</h1>
+        <h1 className="text-[56px] font-serif max-lg:leading-[1.05]">
+          How does the Internet work?
+        </h1>
         <p>
           It's really easy to overlook the way the internet works. In JavaScript, we can make
           software that talks to other computers on the internet simply using a `fetch` call:
@@ -52,6 +55,7 @@ export default function Internet() {
                 Icon,
                 Scroller,
                 ScrollerButton,
+                Steps,
                 Toolbar,
                 Aside,
                 Callout,
@@ -63,7 +67,9 @@ export default function Internet() {
                   <h3 className="text-xl font-medium">{children}</h3>
                 ),
                 ol: ({ children }: { children: ReactNode }) => (
-                  <ol className="grid list-decimal gap-y-2 pl-6 tabular-nums marker:text-gray-9">{children}</ol>
+                  <ol className="grid list-decimal gap-y-2 pl-6 tabular-nums marker:text-gray-9">
+                    {children}
+                  </ol>
                 ),
                 ul: ({ children }: { children: ReactNode }) => (
                   <ul className="grid list-disc gap-y-2 pl-6">{children}</ul>

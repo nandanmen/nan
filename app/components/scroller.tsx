@@ -112,30 +112,6 @@ export function useSection() {
 
 const ACTIVE_THRESHOLD = 0.7;
 
-/** Dotted grid behind a figure, one line every `--grid-size`. */
-function FigureGrid() {
-  return (
-    <div
-      aria-hidden="true"
-      className="pointer-events-none absolute -inset-px p-px"
-      style={{
-        // Give edge dots room to paint while keeping the original grid origin.
-        backgroundOrigin: "content-box",
-        backgroundClip: "border-box",
-        // Center each dotted line on the SVG's grid coordinates.
-        // Offset centered tiles by half a cell so lines start at zero.
-        backgroundImage: [
-          "radial-gradient(circle at center, rgb(0 0 0 / 0.15) 0.5px, transparent 1px)",
-          "radial-gradient(circle at center, rgb(0 0 0 / 0.15) 0.5px, transparent 1px)",
-        ].join(", "),
-        backgroundSize: "var(--grid-size) 4px, 4px var(--grid-size)",
-        backgroundPosition: "calc(var(--grid-size) / -2) 0px, 0px calc(var(--grid-size) / -2)",
-        backgroundRepeat: "repeat, repeat",
-      }}
-    />
-  );
-}
-
 function PaperGutter() {
   return (
     <div aria-hidden="true" className="relative hidden lg:block">
@@ -268,7 +244,6 @@ export function Scroller({ children, figure }: ScrollerProps) {
           style={{ containerType: "inline-size" }}
         >
           <div className="[--grid-size:12.5cqw] xl:[--grid-size:6.25cqw] [height:round(down,100%,var(--grid-size))] [max-height:round(down,100vh,var(--grid-size))] sticky -top-px">
-            <FigureGrid />
             <div className="sticky h-fit top-[calc(var(--grid-size)*3)]">{figure}</div>
           </div>
         </figure>
@@ -306,10 +281,7 @@ function ScrollerSection({
         {/* On small screens, each section shows its own scene right below its text. */}
         <ScrollerContext value={inlineFigure}>
           <div className="lg:hidden [container-type:inline-size]">
-            <div className="relative [--grid-size:12.5cqw]">
-              <FigureGrid />
-              <div className="relative">{figure}</div>
-            </div>
+            <div className="relative [--grid-size:12.5cqw]">{figure}</div>
           </div>
         </ScrollerContext>
       </section>

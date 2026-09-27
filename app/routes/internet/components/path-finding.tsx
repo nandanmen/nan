@@ -1,26 +1,57 @@
-import { motion, useAnimate } from "motion/react";
+import {
+  animate,
+  motion,
+  useAnimate,
+  useMotionValue,
+  useTransform,
+  type Transition,
+} from "motion/react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useScroller, useScrollerEvent } from "../../../components/scroller";
-import {
-  clearRoute,
-  LinkFills,
-  NODE_SCALE,
-  routeSequence,
-  RouterShape,
-  type RoutePoint,
-  type RouterBadge,
-} from "./network";
+import { clearRoute, NODE_SCALE, routeSequence, type RoutePoint } from "./network";
 
 // Three networks connected in a chain, R1 — R2 — R3, across three scroller sections:
 // 0. data from 1.1 to 3.2 has to hop through R2;
-// 1. R3 announces its 3.x addresses, which reach R1 through R2's routing table;
-// 2. with a direct R1 — R3 link, R1 hears about 3.x twice.
+// 1. stepped through by the text: R3 starts up, announces 3.x to R2, learns
+//    R2's routes, and R2 passes 3.x on to R1;
+// 2. with a direct R1 — R3 link running over R2, R1 hears about 3.x twice.
 
 type Point = { x: number; y: number };
 type Shape = "circle" | "square" | "triangle";
 type RouterId = "r1" | "r2" | "r3";
 type ComputerId = "c11" | "c12" | "c21" | "c31" | "c32";
-type NodeId = RouterId | ComputerId;
+
+type RouterBadge = { label: string; fill: string; text: string };
+
+const ROUTER_IDS: RouterId[] = ["r1", "r2", "r3"];
+
+// Each router's card uses its network's color.
+const ROUTER_BADGES: Record<RouterId, RouterBadge> = {
+  r1: { label: "1", fill: "var(--blue-9)", text: "white" },
+  r2: { label: "2", fill: "var(--orange-8)", text: "white" },
+  r3: { label: "3", fill: "var(--green-9)", text: "white" },
+};
+
+const ROUTER_Y = 8;
+
+// Where the routers sit: in the first section's chain, before router 3 starts
+// up (centered), and once it's up.
+const CHAIN_X: Record<RouterId, number> = { r1: 4, r2: 8, r3: 12 };
+const START_X: Record<RouterId, number> = { r1: 5.5, r2: 10.5, r3: 13 };
+const END_X: Record<RouterId, number> = { r1: 3, r2: 8, r3: 13 };
+
+// Link thickness in pixels; router 3 first appears as a square twice as wide.
+const LINK_WIDTH = 4;
+const SQUARE_SIZE = LINK_WIDTH * 2;
+
+// Full router size, in viewBox units.
+const ROUTER_SIZE = 0.9;
+
+// The figure's viewBox is this many units across.
+const VIEW_SIZE = 16;
+
+const ACTIVE_STROKE = "var(--gray-12)";
+const INACTIVE = { fill: "var(--gray-6)", stroke: "var(--gray-8)" };
 
 type Computer = {
   id: ComputerId;
@@ -28,22 +59,12 @@ type Computer = {
   fill: string;
   stroke: string;
   router: RouterId;
-  label?: string;
+  position: Point;
+  label?: { text: string; position: Point };
 };
 
-const ROUTER_IDS: RouterId[] = ["r1", "r2", "r3"];
-
-// Each router's card uses its network's color.
-const ROUTER_BADGES: Record<RouterId, RouterBadge> = {
-  r1: { label: "1", fill: "var(--blue-9)", text: "white" },
-  r2: { label: "2", fill: "var(--red-9)", text: "white" },
-  r3: { label: "3", fill: "var(--green-9)", text: "white" },
-};
-
-const ACTIVE_STROKE = "var(--gray-12)";
-const INACTIVE = { fill: "var(--gray-6)", stroke: "var(--gray-8)" };
-
-// Only the endpoints we talk about in the text get a color and a label.
+// Computers only appear in the first section. Only the endpoints we talk about
+// in the text get a color and a label.
 const computers: Computer[] = [
   {
     id: "c11",
@@ -51,97 +72,112 @@ const computers: Computer[] = [
     fill: "var(--blue-7)",
     stroke: ACTIVE_STROKE,
     router: "r1",
-    label: "1.1",
+    position: { x: 2, y: 5 },
+    label: { text: "1.1", position: { x: 2, y: 3.5 } },
   },
-  { id: "c12", shape: "square", ...INACTIVE, router: "r1" },
-  { id: "c21", shape: "triangle", ...INACTIVE, router: "r2" },
-  { id: "c31", shape: "circle", ...INACTIVE, router: "r3" },
+  { id: "c12", shape: "square", ...INACTIVE, router: "r1", position: { x: 2, y: 11 } },
+  { id: "c21", shape: "triangle", ...INACTIVE, router: "r2", position: { x: 8, y: 11 } },
+  { id: "c31", shape: "circle", ...INACTIVE, router: "r3", position: { x: 14, y: 5 } },
   {
     id: "c32",
     shape: "square",
     fill: "var(--green-9)",
     stroke: ACTIVE_STROKE,
     router: "r3",
-    label: "3.2",
+    position: { x: 14, y: 11 },
+    label: { text: "3.2", position: { x: 14, y: 12.5 } },
   },
 ];
 
-type Scene = {
-  positions: Record<NodeId, Point>;
-  labels: Partial<Record<ComputerId, Point>>;
-  // Routing tables under each router.
-  tables: boolean;
-  // A direct link between R1 and R3, curving under R2.
-  directLink: boolean;
-};
-
-// The chain, with computers fanned above and below each router.
-const CHAIN: Scene = {
-  positions: {
-    r1: { x: 4, y: 8 },
-    r2: { x: 8, y: 8 },
-    r3: { x: 12, y: 8 },
-    c11: { x: 2, y: 5 },
-    c12: { x: 2, y: 11 },
-    c21: { x: 8, y: 11 },
-    c31: { x: 14, y: 5 },
-    c32: { x: 14, y: 11 },
-  },
-  labels: { c11: { x: 2, y: 3.5 }, c32: { x: 14, y: 12.5 } },
-  tables: false,
-  directLink: false,
-};
-
-// The same chain with computers moved above the routers to make room for tables.
-const WITH_TABLES: Scene = {
-  positions: {
-    r1: { x: 3, y: 8 },
-    r2: { x: 8, y: 8 },
-    r3: { x: 13, y: 8 },
-    c11: { x: 1.5, y: 5 },
-    c12: { x: 4.5, y: 5 },
-    c21: { x: 8, y: 5 },
-    c31: { x: 11.5, y: 5 },
-    c32: { x: 14.5, y: 5 },
-  },
-  labels: { c11: { x: 1.5, y: 3.5 }, c32: { x: 14.5, y: 3.5 } },
-  tables: true,
-  directLink: false,
-};
-
-const SCENES: Scene[] = [CHAIN, WITH_TABLES, { ...WITH_TABLES, directLink: true }];
-
 // Buttons each section's text can use.
-const SECTION_EVENTS = [["send-packet"], ["announce", "share-routes"], ["announce"]];
+const SECTION_EVENTS = [["send-packet"], ["announce"], ["announce"]];
 
 const SWIFT_TRANSITION = { type: "spring", stiffness: 280, damping: 18, mass: 0.3 } as const;
+const FADE_TRANSITION = { duration: 0.3 } as const;
+const INSTANT = { duration: 0 } as const;
 const LABEL_OFFSET_SCALE = 0.75;
 
-// Announcements travel this many seconds per unit of link, and wait at a router
-// before being passed on.
-const ANNOUNCEMENT_SECONDS_PER_UNIT = 0.1;
-const ANNOUNCEMENT_FORWARD_DELAY = 0.3;
+// Router 3 starts up in two stages: it appears as a small square that pushes the
+// others left and links up to router 2, then expands into a full router.
+type StartupStage = 0 | 1 | 2;
 
-// The curved R1 — R3 link bends down to this control point, under R2.
-const DIRECT_LINK_CONTROL = { x: 8, y: 11.2 };
-const DIRECT_LINK_SAMPLES = 24;
+// When each part of the startup begins, and how long it takes, in seconds.
+const LINK_DELAY = 0.1;
+const LINK_DURATION = 0.3;
+const MEET_AT = LINK_DELAY + LINK_DURATION;
+const TICK_DRAW_OUT = 0.3;
+// Router 3 starts expanding just after the two halves of the link meet.
+const EXPAND_AT = MEET_AT + 0.1;
+
+// Into stage 1: router 3 appears as it pushes the others left, then links up.
+const LINK_UP = {
+  square: { duration: 0.35, ease: "backOut" },
+  link: { delay: LINK_DELAY, duration: LINK_DURATION, ease: "easeInOut" },
+} as const;
+
+// The ticks stay hidden until the two halves of the link meet, flash, then
+// quickly draw out. Motion jumps to the first keyframe as soon as it starts,
+// so the wait is part of the keyframes rather than a delay.
+const TICK_TRANSITION: Transition = {
+  duration: MEET_AT + TICK_DRAW_OUT,
+  times: [0, (MEET_AT - 0.01) / (MEET_AT + TICK_DRAW_OUT), MEET_AT / (MEET_AT + TICK_DRAW_OUT), 1],
+  ease: ["linear", "linear", "easeOut"],
+};
+
+// Into stage 2: router 3 expands, then its label and routing table appear.
+const EXPAND = {
+  dots: { delay: 0.1, duration: 0.2 },
+  details: { delay: 0.25, duration: 0.25, ease: "easeOut" },
+} as const;
+
+// How far router 3's label and table travel as they appear.
+const LABEL_RISE = 0.4;
+const TABLE_DROP_PX = 8;
+
+// Ticks above and below where the R2 — R3 link meets: how far from the link's
+// center they start, and how long they are.
+const TICK_GAP = 0.15;
+const TICK_LENGTH = 0.25;
+
+// Each half of the R2 — R3 link runs slightly past the middle so no seam shows.
+const LINK_OVERLAP = 0.02;
+
+// The direct R1 — R3 link goes straight up from R1, across over R2, and
+// straight down into R3, with its two corners rounded to this radius.
+const DIRECT_LINK_TOP = 6;
+const DIRECT_LINK_RADIUS = 0.4;
+const DIRECT_LINK_CORNER_SAMPLES = 8;
+
+// Announcements travel this many seconds per unit of link.
+const ANNOUNCEMENT_SECONDS_PER_UNIT = 0.1;
+
+// Seconds between each step as an announcement works its way through a router,
+// and how long a center square takes to pulse.
+const ROUTER_STEP = 0.25;
+const PULSE_DURATION = 0.3;
+const PULSE_SCALE = 1.4;
+
+// Seconds the lights stay on after the last animation ends, and how much longer
+// the centers stay lit after the outer rings turn off.
+const LIGHTS_OFF_DELAY = 0.3;
+const CENTER_LINGER = 0.15;
 
 // Routing tables sit under their router.
-const TABLE_TOP = 10.4;
-const TABLE_WIDTH = 4.2;
-const TABLE_PADDING = 0.25;
-const TABLE_ROW_HEIGHT = 0.75;
+const TABLE_TOP = 9;
+const TABLE_PADDING = 0.15;
+const TABLE_ROW_HEIGHT = 0.9;
 
 type Route = { prefix: string; via: RouterId };
+
+type Forward = Partial<Record<RouterId, RouterId[]>>;
 
 type Announcement = {
   id: number;
   prefix: string;
   from: RouterId;
   to: RouterId;
-  delay: number;
-  // Where each router passes this announcement on to once it arrives.
-  forward: Partial<Record<RouterId, RouterId[]>>;
+  // Where each router passes the announcement on to once it arrives.
+  forward: Forward;
 };
 
 // R1 and R2 are directly connected, so each already knows how to reach the
@@ -152,30 +188,97 @@ const INITIAL_TABLES: Record<RouterId, Route[]> = {
   r3: [],
 };
 
-// The network each prefix belongs to, which colors its announcements.
-const PREFIX_ROUTER: Record<string, RouterId> = { "1.x": "r1", "2.x": "r2", "3.x": "r3" };
-
-function quadraticPoint(from: Point, control: Point, to: Point, t: number): Point {
-  const u = 1 - t;
+// Each router's routing table once the given step of the second section is done.
+function tablesAfter(step: number): Record<RouterId, Route[]> {
   return {
-    x: u * u * from.x + 2 * u * t * control.x + t * t * to.x,
-    y: u * u * from.y + 2 * u * t * control.y + t * t * to.y,
+    r1: [...INITIAL_TABLES.r1, ...(step >= 4 ? [{ prefix: "3.x", via: "r2" as const }] : [])],
+    r2: [...INITIAL_TABLES.r2, ...(step >= 2 ? [{ prefix: "3.x", via: "r3" as const }] : [])],
+    r3:
+      step >= 3
+        ? [
+            { prefix: "2.x", via: "r2" },
+            { prefix: "1.x", via: "r2" },
+          ]
+        : [],
   };
 }
 
-function directLinkPath(r1: Point, r3: Point) {
-  return `M ${r1.x} ${r1.y} Q ${DIRECT_LINK_CONTROL.x} ${DIRECT_LINK_CONTROL.y} ${r3.x} ${r3.y}`;
+const NO_ROUTES: Record<RouterId, Route[]> = { r1: [], r2: [], r3: [] };
+
+// The network each prefix belongs to, which colors its announcements.
+const PREFIX_ROUTER: Record<string, RouterId> = { "1.x": "r1", "2.x": "r2", "3.x": "r3" };
+
+// 3x3 grid of square dots filling this much of the router, indexed row by row
+// from the top-left.
+const ROUTER_DOT_GRID_SIZE = 0.6;
+const ROUTER_DOT_GAP = 0.03;
+const ROUTER_DOT_SIZE = (ROUTER_DOT_GRID_SIZE - 2 * ROUTER_DOT_GAP) / 3;
+const ROUTER_DOT_POSITIONS = [-1, 0, 1].flatMap((row) =>
+  [-1, 0, 1].map((col) => ({
+    x: col * (ROUTER_DOT_SIZE + ROUTER_DOT_GAP) - ROUTER_DOT_SIZE / 2,
+    y: row * (ROUTER_DOT_SIZE + ROUTER_DOT_GAP) - ROUTER_DOT_SIZE / 2,
+  })),
+);
+const ROUTER_CENTER_DOT = 4;
+
+// Picks the outer dot that faces `point`, snapping the direction to the nearest 45°.
+function routerDotForDirection(router: Point, point: Point) {
+  const octant = Math.round(Math.atan2(point.y - router.y, point.x - router.x) / (Math.PI / 4));
+  const angle = (octant * Math.PI) / 4;
+  const col = Math.round(Math.cos(angle));
+  const row = Math.round(Math.sin(angle));
+  return (row + 1) * 3 + (col + 1);
 }
 
-// Points an announcement passes through between two neighboring routers.
-function announcementPath(scene: Scene, from: RouterId, to: RouterId): Point[] {
-  const start = scene.positions[from];
-  const end = scene.positions[to];
-  const isDirect = (from === "r1" && to === "r3") || (from === "r3" && to === "r1");
-  if (!isDirect) return [start, end];
-  return Array.from({ length: DIRECT_LINK_SAMPLES + 1 }, (_, i) =>
-    quadraticPoint(start, DIRECT_LINK_CONTROL, end, i / DIRECT_LINK_SAMPLES),
-  );
+function endPoint(id: RouterId): Point {
+  return { x: END_X[id], y: ROUTER_Y };
+}
+
+// Points along a rounded corner, from `startAngle` to `endAngle` around `center`.
+function cornerPoints(center: Point, startAngle: number, endAngle: number): Point[] {
+  return Array.from({ length: DIRECT_LINK_CORNER_SAMPLES + 1 }, (_, i) => {
+    const angle = startAngle + ((endAngle - startAngle) * i) / DIRECT_LINK_CORNER_SAMPLES;
+    return {
+      x: center.x + DIRECT_LINK_RADIUS * Math.cos(angle),
+      y: center.y + DIRECT_LINK_RADIUS * Math.sin(angle),
+    };
+  });
+}
+
+// Points along the direct link, from R1 to R3.
+function directLinkPoints(): Point[] {
+  const r1 = endPoint("r1");
+  const r3 = endPoint("r3");
+  const cornerY = DIRECT_LINK_TOP + DIRECT_LINK_RADIUS;
+  return [
+    r1,
+    ...cornerPoints({ x: r1.x + DIRECT_LINK_RADIUS, y: cornerY }, Math.PI, 1.5 * Math.PI),
+    ...cornerPoints({ x: r3.x - DIRECT_LINK_RADIUS, y: cornerY }, 1.5 * Math.PI, 2 * Math.PI),
+    r3,
+  ];
+}
+
+function directLinkPath() {
+  const r1 = endPoint("r1");
+  const r3 = endPoint("r3");
+  const r = DIRECT_LINK_RADIUS;
+  const top = DIRECT_LINK_TOP;
+  return [
+    `M ${r1.x} ${r1.y}`,
+    `V ${top + r}`,
+    `A ${r} ${r} 0 0 1 ${r1.x + r} ${top}`,
+    `H ${r3.x - r}`,
+    `A ${r} ${r} 0 0 1 ${r3.x} ${top + r}`,
+    `V ${r3.y}`,
+  ].join(" ");
+}
+
+// Points an announcement passes through between two neighboring routers. R1 and
+// R3 are only neighbors in the last section, through the direct link.
+function announcementPath(from: RouterId, to: RouterId): Point[] {
+  if (from === "r1" && to === "r3") return directLinkPoints();
+  if (from === "r3" && to === "r1") return directLinkPoints().reverse();
+  return [endPoint(from), endPoint(to)];
 }
 
 function pathLength(points: Point[]) {
@@ -185,84 +288,226 @@ function pathLength(points: Point[]) {
   }, 0);
 }
 
+// Seconds an announcement takes to travel between two routers.
+function travelTime(from: RouterId, to: RouterId) {
+  return pathLength(announcementPath(from, to)) * ANNOUNCEMENT_SECONDS_PER_UNIT;
+}
+
+// How many pixels one viewBox unit takes up, kept current as the SVG resizes.
+function usePixelsPerUnit(svgRef: { current: Element | null }) {
+  const [pixelsPerUnit, setPixelsPerUnit] = useState(1);
+
+  useEffect(() => {
+    const svg = svgRef.current;
+    if (!svg) return;
+    const update = () => setPixelsPerUnit(svg.getBoundingClientRect().width / VIEW_SIZE || 1);
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(svg);
+    return () => observer.disconnect();
+  }, [svgRef]);
+
+  return pixelsPerUnit;
+}
+
 export function PathFinding() {
   const { activeSection, setAvailableEvents } = useScroller();
-  const sceneIndex = Math.min(activeSection, SCENES.length - 1);
-  const scene = SCENES[sceneIndex];
+  const sceneIndex = Math.min(activeSection, SECTION_EVENTS.length - 1);
   const [scope, animate] = useAnimate();
-  const animationRef = useRef<{ stop: () => void } | null>(null);
-  const [tables, setTables] = useState(INITIAL_TABLES);
+  const pixelsPerUnit = usePixelsPerUnit(scope);
+  const routeAnimation = useRef<{ stop: () => void } | null>(null);
+
+  // The second section's step, and routes learned from announcements that have
+  // arrived during the current step (or the last section's announcement).
+  const [step, setStep] = useState(0);
+  const [learned, setLearned] = useState(NO_ROUTES);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const nextId = useRef(0);
+
+  // How far router 3's startup has got in the second section, the stage it moved
+  // on from, and whether to snap there rather than animate. Each startup run
+  // remounts the ticks so they play again.
+  const [startup, setStartup] = useState<{
+    stage: StartupStage;
+    from: StartupStage;
+    instant: boolean;
+  }>({ stage: 0, from: 0, instant: false });
+  const [startupRuns, setStartupRuns] = useState(0);
+
+  const timers = useRef<number[]>([]);
+  // Pending turn-offs for the outer rings and the centers, and when the latest
+  // animation ends.
+  const offTimers = useRef(new Map<string, number>());
+  const animationEndsAt = useRef(0);
+
+  const schedule = (seconds: number, action: () => void) => {
+    timers.current.push(window.setTimeout(action, seconds * 1000));
+  };
+
+  // Stops everything in flight and turns every light off.
+  const reset = () => {
+    routeAnimation.current?.stop();
+    routeAnimation.current = null;
+    timers.current.forEach(clearTimeout);
+    timers.current = [];
+    offTimers.current.forEach(clearTimeout);
+    offTimers.current.clear();
+    animationEndsAt.current = 0;
+    clearRoute(animate);
+    animate("[data-router-dot]", { scale: 1 }, { duration: 0 });
+    setAnnouncements([]);
+    setLearned(NO_ROUTES);
+  };
+
+  useEffect(
+    () => () => {
+      timers.current.forEach(clearTimeout);
+      offTimers.current.forEach(clearTimeout);
+    },
+    [],
+  );
 
   useEffect(() => {
     setAvailableEvents({ index: activeSection, types: SECTION_EVENTS[sceneIndex] ?? [] });
     return () => setAvailableEvents(null);
   }, [activeSection, sceneIndex, setAvailableEvents]);
 
-  // Each section starts from a clean slate: no drawn route, no announcements, empty tables.
+  // Each section starts from a clean slate, and the second one from its first step.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: only reset when the section changes
   useLayoutEffect(() => {
-    animationRef.current?.stop();
-    animationRef.current = null;
-    clearRoute(animate);
-    setTables(INITIAL_TABLES);
-    setAnnouncements([]);
-  }, [sceneIndex, animate]);
+    reset();
+    setStep(0);
+    setStartup({ stage: 0, from: 0, instant: false });
+  }, [sceneIndex]);
 
-  const send = () => {
-    const { positions } = scene;
-    const path: RoutePoint[] = [
-      positions.c11,
-      ...ROUTER_IDS.map((id) => ({ ...positions[id], routerId: id })),
-      positions.c32,
-    ];
-    animationRef.current?.stop();
-    clearRoute(animate);
-    animationRef.current = animate(routeSequence(path), {
-      onComplete: () => {
-        animationRef.current = null;
-      },
+  const dot = (router: RouterId, index: number) =>
+    `[data-router="${router}"] [data-router-dot="${index}"]`;
+
+  // Turns off the squares matching `selector` after `seconds`, replacing any
+  // earlier turn-off scheduled under the same key.
+  const turnOffLater = (key: string, selector: string, seconds: number) => {
+    clearTimeout(offTimers.current.get(key));
+    offTimers.current.set(
+      key,
+      window.setTimeout(() => {
+        offTimers.current.delete(key);
+        animate(selector, { opacity: 0 }, { duration: 0 });
+      }, seconds * 1000),
+    );
+  };
+
+  // Lights stay on while announcements play out. Shortly after the last
+  // animation ends, every router's outer ring turns off at once, then every
+  // center. `busyFor` is how long the lit square keeps animating.
+  const lightDot = (router: RouterId, index: number, busyFor = 0) => {
+    animate(dot(router, index), { opacity: 1 }, { duration: 0 });
+
+    const ends = performance.now() + busyFor * 1000;
+    if (ends < animationEndsAt.current) return;
+    animationEndsAt.current = ends;
+    turnOffLater(
+      "rings",
+      `[data-router-dot]:not([data-router-dot="${ROUTER_CENTER_DOT}"])`,
+      busyFor + LIGHTS_OFF_DELAY,
+    );
+    turnOffLater(
+      "centers",
+      `[data-router-dot="${ROUTER_CENTER_DOT}"]`,
+      busyFor + LIGHTS_OFF_DELAY + CENTER_LINGER,
+    );
+  };
+
+  // The center square lights up and briefly swells as the router handles an
+  // announcement. `busyFor` covers anything the router does right after.
+  const pulseCenter = (router: RouterId, busyFor = PULSE_DURATION) => {
+    lightDot(router, ROUTER_CENTER_DOT, busyFor);
+    animate(
+      dot(router, ROUTER_CENTER_DOT),
+      { scale: [1, PULSE_SCALE, 1] },
+      { duration: PULSE_DURATION, ease: "easeInOut" },
+    );
+  };
+
+  // Light the squares facing each outgoing link and send the announcement down
+  // them; the figure stays busy until they arrive.
+  const send = (prefix: string, from: RouterId, to: RouterId[], forward: Forward = {}) => {
+    for (const target of to) {
+      const path = announcementPath(from, target);
+      lightDot(from, routerDotForDirection(path[0], path[1]), travelTime(from, target));
+    }
+    setAnnouncements((current) => [
+      ...current,
+      ...to.map((target) => ({ id: nextId.current++, prefix, from, to: target, forward })),
+    ]);
+  };
+
+  // The square facing the link it came in on lights up, then the router records
+  // the route as its center pulses, and passes it on if it should.
+  const arrive = (announcement: Announcement) => {
+    const { prefix, from, to } = announcement;
+    const forward = announcement.forward[to] ?? [];
+    setAnnouncements((current) => current.filter(({ id }) => id !== announcement.id));
+    const path = announcementPath(from, to);
+    lightDot(to, routerDotForDirection(path[path.length - 1], path[path.length - 2]), ROUTER_STEP);
+    schedule(ROUTER_STEP, () => {
+      pulseCenter(to, forward.length > 0 ? PULSE_DURATION + ROUTER_STEP : PULSE_DURATION);
+      setLearned((current) => ({ ...current, [to]: [...current[to], { prefix, via: from }] }));
+    });
+    if (forward.length > 0) {
+      schedule(ROUTER_STEP + PULSE_DURATION + ROUTER_STEP, () => send(prefix, to, forward));
+    }
+  };
+
+  // A router decides to speak up, then sends each announcement in turn.
+  const pulseThenSend = (
+    from: RouterId,
+    to: RouterId[],
+    prefixes: string[],
+    forward: Forward = {},
+  ) => {
+    pulseCenter(from, PULSE_DURATION + prefixes.length * ROUTER_STEP);
+    prefixes.forEach((prefix, i) => {
+      schedule(PULSE_DURATION + (i + 1) * ROUTER_STEP, () => send(prefix, from, to, forward));
     });
   };
 
-  const announce = (
-    prefix: string,
-    from: RouterId,
-    to: RouterId[],
-    forward: Announcement["forward"] = {},
-    delay = 0,
-  ) => {
-    setAnnouncements((current) => [
-      ...current,
-      ...to.map((target) => ({
-        id: nextId.current++,
-        prefix,
-        from,
-        to: target,
-        delay,
-        forward,
-      })),
-    ]);
+  // Router 3 starts up from the two-router layout: it links up to router 2,
+  // then expands into a full router. The first stage waits a moment so the
+  // snap back to the two-router layout renders first.
+  const startUpRouter3 = () => {
+    setStartup({ stage: 0, from: 0, instant: true });
+    setStartupRuns((runs) => runs + 1);
+    schedule(0.02, () => setStartup({ stage: 1, from: 0, instant: false }));
+    schedule(0.02 + EXPAND_AT, () => setStartup({ stage: 2, from: 1, instant: false }));
   };
 
-  const arrive = (announcement: Announcement) => {
-    const { prefix, from, to, forward } = announcement;
-    setAnnouncements((current) => [
-      ...current.filter(({ id }) => id !== announcement.id),
-      // Pass the announcement on, now coming from this router.
-      ...(forward[to] ?? []).map((target) => ({
-        id: nextId.current++,
-        prefix,
-        from: to,
-        to: target,
-        delay: ANNOUNCEMENT_FORWARD_DELAY,
-        forward,
-      })),
-    ]);
-    setTables((current) => {
-      const routes = current[to];
-      if (routes.some((route) => route.prefix === prefix && route.via === from)) return current;
-      return { ...current, [to]: [...routes, { prefix, via: from }] };
+  // What happens as each step of the second section plays out. Receiving routers
+  // update their tables as each announcement arrives.
+  const STEP_ACTIONS: Partial<Record<number, () => void>> = {
+    1: startUpRouter3,
+    2: () => pulseThenSend("r3", ["r2"], ["3.x"]),
+    3: () => pulseThenSend("r2", ["r3"], ["2.x", "1.x"]),
+    4: () => pulseThenSend("r2", ["r1"], ["3.x"]),
+  };
+
+  const goToStep = (next: number) => {
+    reset();
+    setStartup({ stage: next === 0 ? 0 : 2, from: 0, instant: true });
+    setStep(next);
+    STEP_ACTIONS[next]?.();
+  };
+
+  const sendPacket = () => {
+    reset();
+    const path: RoutePoint[] = [
+      computers[0].position,
+      ...ROUTER_IDS.map((id) => ({ x: CHAIN_X[id], y: ROUTER_Y, routerId: id })),
+      computers[4].position,
+    ];
+    routeAnimation.current = animate(routeSequence(path), {
+      onComplete: () => {
+        routeAnimation.current = null;
+      },
     });
   };
 
@@ -270,153 +515,327 @@ export function PathFinding() {
     if (index !== activeSection) return;
 
     if (event.type === "send-packet" && sceneIndex === 0) {
-      send();
-    } else if (event.type === "announce") {
-      // R3 tells its neighbors it can receive 3.x, and R2 passes that on to R1.
-      setTables(INITIAL_TABLES);
-      setAnnouncements([]);
-      announce("3.x", "r3", scene.directLink ? ["r2", "r1"] : ["r2"], { r2: ["r1"] });
-    } else if (event.type === "share-routes") {
-      // R2 already knows about R1, so it tells R3 how to reach both 2.x and 1.x.
-      announce("2.x", "r2", ["r3"]);
-      announce("1.x", "r2", ["r3"], {}, ANNOUNCEMENT_FORWARD_DELAY);
+      sendPacket();
+    } else if (event.type === "announce" && sceneIndex === 1 && typeof event.step === "number") {
+      goToStep(event.step);
+    } else if (event.type === "announce" && sceneIndex === 2) {
+      // R3 tells both its neighbors it can receive 3.x, and R2 also passes it on to R1.
+      reset();
+      pulseThenSend("r3", ["r2", "r1"], ["3.x"], { r2: ["r1"] });
     }
   });
 
-  const { positions } = scene;
-  const links: [Point, Point][] = [
-    ...computers.map((c): [Point, Point] => [positions[c.id], positions[c.router]]),
-    [positions.r1, positions.r2],
-    [positions.r2, positions.r3],
-  ];
+  // Router 3 is only starting up in the second section; elsewhere it's fully up.
+  const stage: StartupStage = sceneIndex === 1 ? startup.stage : 2;
+  const linked = stage >= 1;
+  const expanded = stage >= 2;
+  const snap = sceneIndex === 1 && startup.instant;
+  const linkingUp = sceneIndex === 1 && startup.stage === 1 && startup.from === 0 && !snap;
+  const expanding = sceneIndex === 1 && startup.stage === 2 && startup.from === 1 && !snap;
+  const showTicks = sceneIndex === 1 && !snap && startup.stage >= 1 && startupRuns > 0;
+
+  const move: Transition = snap ? INSTANT : SWIFT_TRANSITION;
+  const fade: Transition = snap ? INSTANT : FADE_TRANSITION;
+  const details: Transition = expanding ? EXPAND.details : fade;
+
+  const routerX = (id: RouterId) =>
+    sceneIndex === 0 ? CHAIN_X[id] : sceneIndex === 1 && !linked ? START_X[id] : END_X[id];
+  const middleX = (routerX("r2") + routerX("r3")) / 2;
+
+  const tables =
+    sceneIndex === 1 ? tablesAfter(step - 1) : sceneIndex === 2 ? INITIAL_TABLES : NO_ROUTES;
+  const shownTables = Object.fromEntries(
+    ROUTER_IDS.map((id) => [id, [...tables[id], ...learned[id]]]),
+  ) as Record<RouterId, Route[]>;
+  const showTables = sceneIndex > 0;
+
+  const smallScale = SQUARE_SIZE / pixelsPerUnit / ROUTER_SIZE;
+  const router3Scale = expanded ? 1 : linked ? smallScale : 0;
+  const tickX = (END_X.r2 + END_X.r3) / 2;
 
   return (
-    <div className="w-full">
+    <div className="relative w-full">
       <svg
         ref={scope}
         aria-label="Three networks connected in a chain of routers"
         className="block w-full h-auto aspect-square overflow-visible"
         fill="none"
         role="img"
-        viewBox="0 0 16 16"
+        viewBox={`0 0 ${VIEW_SIZE} ${VIEW_SIZE}`}
       >
         <g stroke="currentColor" className="text-gray-7">
-          {links.map(([from, to], i) => (
+          {computers.map((c) => (
             <motion.line
-              key={i}
+              key={`link-${c.id}`}
+              x1={c.position.x}
+              y1={c.position.y}
               initial={false}
-              animate={{ x1: from.x, y1: from.y, x2: to.x, y2: to.y }}
+              animate={{ x2: routerX(c.router), opacity: sceneIndex === 0 ? 1 : 0 }}
               transition={SWIFT_TRANSITION}
+              y2={ROUTER_Y}
               vectorEffect="non-scaling-stroke"
-              strokeWidth="6"
+              strokeWidth={LINK_WIDTH}
             />
           ))}
-          <motion.path
-            d={directLinkPath(WITH_TABLES.positions.r1, WITH_TABLES.positions.r3)}
+          <motion.line
             initial={false}
-            animate={{ opacity: scene.directLink ? 1 : 0 }}
+            animate={{ x1: routerX("r1"), x2: routerX("r2") }}
+            transition={move}
+            y1={ROUTER_Y}
+            y2={ROUTER_Y}
             vectorEffect="non-scaling-stroke"
-            strokeWidth="6"
+            strokeWidth={LINK_WIDTH}
           />
+          {/* The R2 — R3 link, in two halves that grow from each end toward the middle. */}
+          {(["r2", "r3"] as const).map((id) => {
+            const toward = Math.sign(middleX - routerX(id));
+            return (
+              <motion.line
+                key={`link-half-${id}`}
+                initial={false}
+                animate={{
+                  x1: routerX(id),
+                  x2: linked ? middleX + toward * LINK_OVERLAP : routerX(id),
+                }}
+                transition={linkingUp ? LINK_UP.link : move}
+                y1={ROUTER_Y}
+                y2={ROUTER_Y}
+                vectorEffect="non-scaling-stroke"
+                strokeWidth={LINK_WIDTH}
+              />
+            );
+          })}
+          <motion.path
+            d={directLinkPath()}
+            initial={false}
+            animate={{ pathLength: sceneIndex === 2 ? 1 : 0, opacity: sceneIndex === 2 ? 1 : 0 }}
+            transition={{ duration: 0.5, ease: "easeInOut" }}
+            // Drawing along the path needs a stroke in viewBox units rather than
+            // a non-scaling one, so convert the link width.
+            strokeWidth={LINK_WIDTH / pixelsPerUnit}
+          />
+          {ROUTER_IDS.map((id) => (
+            <motion.line
+              key={`table-link-${id}`}
+              initial={false}
+              animate={{
+                x1: routerX(id),
+                x2: routerX(id),
+                opacity: showTables && (id !== "r3" || expanded) ? 1 : 0,
+              }}
+              transition={id === "r3" ? { ...move, opacity: details } : move}
+              y1={ROUTER_Y + ROUTER_SIZE / 2}
+              y2={TABLE_TOP}
+              stroke="black"
+              strokeDasharray="4 3"
+              vectorEffect="non-scaling-stroke"
+              strokeWidth="1"
+            />
+          ))}
         </g>
 
-        <LinkFills count={4} />
+        {/* Lines that fill in the route as data is sent in the first section. */}
+        <g style={{ stroke: "var(--gray-12)" }}>
+          {Array.from({ length: computers.length - 1 }, (_, i) => (
+            <motion.line
+              key={i}
+              data-link-fill={i}
+              initial={{ opacity: 0 }}
+              vectorEffect="non-scaling-stroke"
+              strokeWidth={LINK_WIDTH}
+            />
+          ))}
+        </g>
+
+        {/* Ticks marking where the two halves of the R2 — R3 link meet. */}
+        {[-1, 1].map((side) => {
+          const inner = ROUTER_Y + side * TICK_GAP;
+          const outer = ROUTER_Y + side * (TICK_GAP + TICK_LENGTH);
+          return (
+            <motion.line
+              key={`tick-${side}-${startupRuns}`}
+              x1={tickX}
+              x2={tickX}
+              y2={outer}
+              initial={{ opacity: 0, y1: inner }}
+              animate={
+                showTicks
+                  ? {
+                      opacity: [0, 0, 1, 1],
+                      // Once shown, the inner end chases the outer end until the tick is gone.
+                      y1: [inner, inner, inner, outer],
+                    }
+                  : { opacity: 0, y1: inner }
+              }
+              transition={showTicks ? TICK_TRANSITION : INSTANT}
+              stroke="var(--gray-12)"
+              strokeWidth="1.5"
+              vectorEffect="non-scaling-stroke"
+            />
+          );
+        })}
 
         {announcements.map((announcement) => (
           <AnnouncementBadge
             key={announcement.id}
             announcement={announcement}
-            path={announcementPath(scene, announcement.from, announcement.to)}
             onArrive={() => arrive(announcement)}
           />
         ))}
 
-        {computers.map((c) => {
-          const label = scene.labels[c.id];
-          return (
-            c.label &&
-            label && (
-              <VertexLabel
+        {computers.map(
+          (c) =>
+            c.label && (
+              <motion.g
                 key={`label-${c.id}`}
-                text={c.label}
-                x={label.x}
-                y={label.y}
-                targetX={positions[c.id].x}
-                targetY={positions[c.id].y}
-              />
-            )
-          );
-        })}
+                initial={false}
+                animate={{ opacity: sceneIndex === 0 ? 1 : 0 }}
+                transition={FADE_TRANSITION}
+              >
+                <VertexLabel
+                  text={c.label.text}
+                  x={c.label.position.x}
+                  y={c.label.position.y}
+                  targetX={c.position.x}
+                  targetY={c.position.y}
+                />
+              </motion.g>
+            ),
+        )}
 
         {computers.map((c) => (
           <motion.g
             key={c.id}
             initial={false}
-            animate={{ x: positions[c.id].x, y: positions[c.id].y }}
-            transition={SWIFT_TRANSITION}
+            animate={{ x: c.position.x, y: c.position.y, opacity: sceneIndex === 0 ? 1 : 0 }}
+            transition={FADE_TRANSITION}
           >
             <g className={NODE_SCALE}>
               <ComputerShape shape={c.shape} fill={c.fill} stroke={c.stroke} />
             </g>
           </motion.g>
         ))}
-        {ROUTER_IDS.map((id) => (
+
+        {(["r1", "r2"] as const).map((id) => (
           <motion.g
             key={id}
             data-router={id}
             initial={false}
-            animate={{ x: positions[id].x, y: positions[id].y }}
-            transition={SWIFT_TRANSITION}
+            animate={{ x: routerX(id), y: ROUTER_Y }}
+            transition={move}
           >
             <g className={NODE_SCALE}>
-              <RouterShape badge={ROUTER_BADGES[id]} />
+              <BadgeCard badge={ROUTER_BADGES[id]} />
+              <RouterFrame />
+              <RouterDots badge={ROUTER_BADGES[id]} />
             </g>
           </motion.g>
         ))}
 
-        <motion.g initial={false} animate={{ opacity: scene.tables ? 1 : 0 }}>
-          {ROUTER_IDS.map((id) => (
-            <RoutingTable
-              key={id}
-              x={WITH_TABLES.positions[id].x - TABLE_WIDTH / 2}
-              y={TABLE_TOP}
-              routes={tables[id]}
-            />
-          ))}
+        {/* Router 3, which starts up as a small square in the second section. */}
+        <motion.g
+          data-router="r3"
+          initial={false}
+          animate={{ x: routerX("r3"), y: ROUTER_Y }}
+          transition={move}
+        >
+          <g className={NODE_SCALE}>
+            {/* Its numbered card rises from behind it once it's full size. */}
+            <motion.g
+              initial={false}
+              animate={expanded ? { opacity: 1, y: 0 } : { opacity: 0, y: LABEL_RISE }}
+              transition={details}
+            >
+              <BadgeCard badge={ROUTER_BADGES.r3} />
+            </motion.g>
+            <motion.g
+              initial={false}
+              animate={{ scale: router3Scale }}
+              transition={linkingUp ? LINK_UP.square : move}
+              style={{ transformBox: "fill-box", transformOrigin: "center" }}
+            >
+              <RouterFrame />
+            </motion.g>
+            <motion.g
+              initial={false}
+              animate={{ opacity: expanded ? 1 : 0 }}
+              transition={expanding ? EXPAND.dots : fade}
+            >
+              <RouterDots badge={ROUTER_BADGES.r3} />
+            </motion.g>
+          </g>
         </motion.g>
       </svg>
+
+      <div className="pointer-events-none absolute inset-0">
+        {ROUTER_IDS.map((id) => {
+          const visible = showTables && (id !== "r3" || expanded);
+          return (
+            <motion.div
+              key={id}
+              className="absolute inset-0"
+              initial={false}
+              animate={
+                visible ? { opacity: 1, y: 0 } : { opacity: 0, y: id === "r3" ? -TABLE_DROP_PX : 0 }
+              }
+              transition={id === "r3" ? details : fade}
+            >
+              <RoutingTable x={routerX(id)} routes={shownTables[id]} transition={move} />
+            </motion.div>
+          );
+        })}
+      </div>
     </div>
   );
 }
 
 function AnnouncementBadge({
   announcement,
-  path,
   onArrive,
 }: {
   announcement: Announcement;
-  path: Point[];
   onArrive: () => void;
 }) {
   const color = ROUTER_BADGES[PREFIX_ROUTER[announcement.prefix] ?? "r3"].fill;
+  const onArriveRef = useRef(onArrive);
+  onArriveRef.current = onArrive;
+
+  // Place the badge by distance travelled rather than by point, so it keeps a
+  // steady speed through the direct link's tightly sampled corners.
+  const path = announcementPath(announcement.from, announcement.to);
+  const length = pathLength(path);
+  const stops = path.map((_, i) => pathLength(path.slice(0, i + 1)) / length);
+  const progress = useMotionValue(0);
+  const x = useTransform(
+    progress,
+    stops,
+    path.map((point) => point.x),
+  );
+  const y = useTransform(
+    progress,
+    stops,
+    path.map((point) => point.y),
+  );
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: each badge travels once
+  useEffect(() => {
+    const controls = animate(progress, 1, {
+      duration: length * ANNOUNCEMENT_SECONDS_PER_UNIT,
+      // The winding direct link eases in and out; straight hops stay linear.
+      ease: path.length > 2 ? "easeInOut" : "linear",
+      onComplete: () => onArriveRef.current(),
+    });
+    return () => controls.stop();
+  }, []);
+
   return (
-    <motion.g
-      initial={{ x: path[0].x, y: path[0].y }}
-      animate={{ x: path.map((point) => point.x), y: path.map((point) => point.y) }}
-      transition={{
-        duration: pathLength(path) * ANNOUNCEMENT_SECONDS_PER_UNIT,
-        delay: announcement.delay,
-        ease: "linear",
-      }}
-      onAnimationComplete={onArrive}
-    >
+    <motion.g style={{ x, y }}>
       <g className={NODE_SCALE}>
         <rect
           x="-0.5"
           y="-0.28"
           width="1"
           height="0.56"
-          rx="0.28"
           style={{ fill: color, stroke: "white" }}
           strokeWidth="2"
           vectorEffect="non-scaling-stroke"
@@ -436,106 +855,162 @@ function AnnouncementBadge({
   );
 }
 
-function RoutingTable({ x, y, routes }: { x: number; y: number; routes: Route[] }) {
-  const rows = Math.max(routes.length, 1);
-  const height = TABLE_PADDING * 2 + rows * TABLE_ROW_HEIGHT;
+function RoutingTable({
+  x,
+  routes,
+  transition,
+}: {
+  x: number;
+  routes: Route[];
+  transition: Transition;
+}) {
+  const cqwPerUnit = 100 / VIEW_SIZE;
   // Two routes for the same prefix leave the router with a choice to make.
   const isConflicting = (prefix: string) =>
     routes.filter((route) => route.prefix === prefix).length > 1;
 
   return (
-    <g transform={`translate(${x} ${y})`}>
-      <motion.rect
-        width={TABLE_WIDTH}
-        initial={false}
-        animate={{ height }}
-        transition={SWIFT_TRANSITION}
-        rx="0.15"
-        style={{ fill: "white", stroke: "var(--gray-7)" }}
-        strokeWidth="1.5"
-        vectorEffect="non-scaling-stroke"
-      />
+    <motion.div
+      className="absolute w-max origin-top overflow-hidden whitespace-nowrap border border-black bg-white font-sans text-gray-12 max-lg:scale-150"
+      initial={false}
+      animate={{ left: `${(x / VIEW_SIZE) * 100}%` }}
+      transition={transition}
+      style={{
+        top: `calc(${(TABLE_TOP / VIEW_SIZE) * 100}% - 1px)`,
+        borderStyle: routes.length === 0 ? "dashed" : "solid",
+        transform: "translateX(-50%)",
+        fontSize: `${0.4 * cqwPerUnit}cqw`,
+      }}
+    >
       {routes.length === 0 && (
-        <text
-          x={TABLE_PADDING + 0.1}
-          y={TABLE_PADDING + TABLE_ROW_HEIGHT / 2}
-          style={{ fill: "var(--gray-9)" }}
-          className="font-sans"
-          fontSize="0.36"
-          dy="0.35em"
+        <div
+          className="flex items-center bg-gray-2 text-gray-10 italic"
+          style={{
+            height: `${TABLE_ROW_HEIGHT * cqwPerUnit}cqw`,
+            paddingInline: `calc(${TABLE_PADDING * cqwPerUnit}cqw + 1px)`,
+            fontSize: `${0.3 * cqwPerUnit}cqw`,
+          }}
         >
           No routes yet
-        </text>
+        </div>
       )}
-      {routes.map((route, i) => (
-        <motion.g
+      {routes.map((route, index) => (
+        <motion.div
           key={`${route.prefix}-${route.via}`}
-          initial={{ opacity: 0, y: TABLE_PADDING + i * TABLE_ROW_HEIGHT - 0.2 }}
-          animate={{ opacity: 1, y: TABLE_PADDING + i * TABLE_ROW_HEIGHT }}
+          className="relative flex items-center overflow-hidden"
+          style={{
+            paddingInline: `calc(${TABLE_PADDING * cqwPerUnit}cqw + 1px)`,
+            lineHeight: 1,
+            gap: `${0.2 * cqwPerUnit}cqw`,
+            background: isConflicting(route.prefix) ? "var(--yellow-4)" : "transparent",
+            borderTop: index > 0 ? "1px dashed black" : undefined,
+          }}
+          initial={{
+            opacity: 0,
+            height: index === 0 ? `${TABLE_ROW_HEIGHT * cqwPerUnit}cqw` : 0,
+            paddingBlock: index === 0 ? `${TABLE_PADDING * cqwPerUnit}cqw` : 0,
+          }}
+          animate={{
+            opacity: 1,
+            height: `${TABLE_ROW_HEIGHT * cqwPerUnit}cqw`,
+            paddingBlock: `${TABLE_PADDING * cqwPerUnit}cqw`,
+          }}
           transition={SWIFT_TRANSITION}
         >
-          {isConflicting(route.prefix) && (
-            <rect
-              x="0.1"
-              y="0.05"
-              width={TABLE_WIDTH - 0.2}
-              height={TABLE_ROW_HEIGHT - 0.1}
-              rx="0.1"
-              style={{ fill: "var(--yellow-4)" }}
-            />
-          )}
-          <text
-            x={TABLE_PADDING + 0.1}
-            y={TABLE_ROW_HEIGHT / 2}
-            style={{ fill: "var(--gray-12)" }}
-            className="font-sans"
-            fontSize="0.4"
-            fontWeight="600"
-            dy="0.35em"
+          <span
+            className="inline-block font-mono"
+            style={{ fontSize: `${0.3 * cqwPerUnit}cqw`, transform: "translateX(2px)" }}
           >
             {route.prefix}
-          </text>
-          <text
-            x={TABLE_WIDTH / 2 + 0.15}
-            y={TABLE_ROW_HEIGHT / 2}
-            style={{ fill: "var(--gray-10)" }}
-            className="font-sans"
-            fontSize="0.4"
-            textAnchor="middle"
-            dy="0.35em"
+          </span>
+          <span className="text-gray-10">→</span>
+          <span
+            className="flex items-center justify-center font-bold"
+            style={{
+              width: `${0.5 * cqwPerUnit}cqw`,
+              height: `${0.5 * cqwPerUnit}cqw`,
+              background: ROUTER_BADGES[route.via].fill,
+              color: ROUTER_BADGES[route.via].text,
+              fontSize: `${0.3 * cqwPerUnit}cqw`,
+            }}
           >
-            →
-          </text>
-          <g transform={`translate(${TABLE_WIDTH - TABLE_PADDING - 0.5} ${TABLE_ROW_HEIGHT / 2})`}>
-            <rect
-              x="-0.35"
-              y="-0.25"
-              width="0.7"
-              height="0.5"
-              rx="0.08"
-              style={{ fill: ROUTER_BADGES[route.via].fill }}
-            />
-            <text
-              style={{ fill: ROUTER_BADGES[route.via].text }}
-              className="font-sans"
-              fontSize="0.3"
-              fontWeight="700"
-              textAnchor="middle"
-              dy="0.35em"
-            >
-              {ROUTER_BADGES[route.via].label}
-            </text>
-          </g>
-        </motion.g>
+            {ROUTER_BADGES[route.via].label}
+          </span>
+        </motion.div>
       ))}
+    </motion.div>
+  );
+}
+
+// Numbered card tucked behind a router, peeking out above it. Labels in these
+// figures center their digits with dy rather than dominant-baseline, which iOS
+// WebKit places too high.
+function BadgeCard({ badge }: { badge: RouterBadge }) {
+  return (
+    <g>
+      <rect x="-0.25" y="-0.92" width="0.5" height="0.72" style={{ fill: badge.fill }} />
+      <text
+        y="-0.68"
+        style={{ fill: badge.text }}
+        className="font-sans"
+        fontSize="0.28"
+        fontWeight="700"
+        textAnchor="middle"
+        dy="0.35em"
+      >
+        {badge.label}
+      </text>
     </g>
+  );
+}
+
+function RouterFrame() {
+  return (
+    <rect
+      width={ROUTER_SIZE}
+      height={ROUTER_SIZE}
+      x={-ROUTER_SIZE / 2}
+      y={-ROUTER_SIZE / 2}
+      style={{ fill: "white", stroke: "var(--gray-12)" }}
+      strokeWidth="1"
+      vectorEffect="non-scaling-stroke"
+    />
+  );
+}
+
+// The router's 3x3 grid, each dot with an overlay in the router's color that
+// lights up as data passes through.
+function RouterDots({ badge }: { badge: RouterBadge }) {
+  return (
+    <>
+      {ROUTER_DOT_POSITIONS.map(({ x, y }, index) => (
+        <g key={index}>
+          <rect
+            x={x}
+            y={y}
+            width={ROUTER_DOT_SIZE}
+            height={ROUTER_DOT_SIZE}
+            style={{ fill: "var(--gray-5)" }}
+          />
+          <rect
+            data-router-dot={index}
+            x={x}
+            y={y}
+            width={ROUTER_DOT_SIZE}
+            height={ROUTER_DOT_SIZE}
+            style={{ fill: badge.fill, transformBox: "fill-box", transformOrigin: "center" }}
+            opacity="0"
+          />
+        </g>
+      ))}
+    </>
   );
 }
 
 function ComputerShape({ shape, fill, stroke }: { shape: Shape; fill: string; stroke: string }) {
   const common = {
     style: { fill, stroke },
-    strokeWidth: 3,
+    strokeWidth: 1,
     vectorEffect: "non-scaling-stroke" as const,
   };
   const h = Math.sqrt(3) / 2;
@@ -574,32 +1049,20 @@ function VertexLabel({
   // Drawn around the point it labels, so scaling it up on small screens also
   // moves the label clear of the (equally scaled) shape.
   return (
-    <motion.g initial={false} animate={{ x: targetX, y: targetY }} transition={SWIFT_TRANSITION}>
+    <g transform={`translate(${targetX} ${targetY})`}>
       <g className={NODE_SCALE}>
-        <motion.line
-          initial={false}
-          animate={{ x1: offsetX, y1: offsetY }}
-          transition={SWIFT_TRANSITION}
+        <line
+          x1={offsetX}
+          y1={offsetY}
           x2={0}
           y2={0}
-          className="text-gray-11"
-          stroke="currentColor"
-          strokeWidth="1.5"
+          stroke="black"
+          strokeDasharray="4 3"
+          strokeWidth="1"
           vectorEffect="non-scaling-stroke"
         />
-        <motion.g
-          initial={false}
-          animate={{ x: offsetX, y: offsetY }}
-          transition={SWIFT_TRANSITION}
-        >
-          <rect
-            x="-0.35"
-            y="-0.35"
-            width="0.7"
-            height="0.7"
-            rx="0.08"
-            style={{ fill: "var(--gray-12)" }}
-          />
+        <g transform={`translate(${offsetX} ${offsetY})`}>
+          <rect x="-0.35" y="-0.35" width="0.7" height="0.7" style={{ fill: "var(--gray-12)" }} />
           <text
             style={{ fill: "var(--gray-1)" }}
             className="font-sans"
@@ -610,8 +1073,8 @@ function VertexLabel({
           >
             {text}
           </text>
-        </motion.g>
+        </g>
       </g>
-    </motion.g>
+    </g>
   );
 }
