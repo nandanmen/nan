@@ -17,6 +17,13 @@ export const FILL_COLOR = "var(--gray-12)";
 // Shapes, routers and labels are drawn around their own origin. Figures are
 // narrow on small screens, so draw them larger there without moving them.
 export const NODE_SCALE = "max-lg:scale-150";
+
+// Outlines of routers and other shapes: 1px, thickened on small screens where
+// shapes are drawn larger.
+export const SHAPE_STROKE = "[stroke-width:1] max-lg:[stroke-width:1.5]";
+
+// Link thickness in pixels.
+export const LINK_WIDTH = 4;
 const FILL_TRANSITION = { type: "tween", duration: 0.3, ease: "linear" } as const;
 const ROUTER_DOT_DELAY = 0.15;
 const ROUTER_CENTER_DOT = 4;
@@ -127,7 +134,7 @@ export function LinkFills({ count }: { count: number }) {
           data-link-fill={i}
           initial={{ opacity: 0 }}
           vectorEffect="non-scaling-stroke"
-          strokeWidth="6"
+          strokeWidth={LINK_WIDTH}
         />
       ))}
     </g>
@@ -180,14 +187,7 @@ export function RouterShape({ badge }: { badge: RouterBadge }) {
           these figures center their digits with dy rather than
           dominant-baseline, which iOS WebKit places too high. */}
       <g>
-        <rect
-          x="-0.25"
-          y="-0.92"
-          width="0.5"
-          height="0.72"
-          rx="0.08"
-          style={{ fill: badge.fill }}
-        />
+        <rect x="-0.25" y="-0.92" width="0.5" height="0.72" style={{ fill: badge.fill }} />
         <text
           y="-0.68"
           style={{ fill: badge.text }}
@@ -205,9 +205,8 @@ export function RouterShape({ badge }: { badge: RouterBadge }) {
         height="0.9"
         x="-0.45"
         y="-0.45"
-        rx="0.12"
         style={{ fill: "white", stroke: "var(--gray-12)" }}
-        strokeWidth="3"
+        className={SHAPE_STROKE}
         vectorEffect="non-scaling-stroke"
       />
       {ROUTER_DOT_POSITIONS.map(({ x, y }, index) => (
@@ -225,7 +224,7 @@ export function RouterShape({ badge }: { badge: RouterBadge }) {
             y={y}
             width={ROUTER_DOT_SIZE}
             height={ROUTER_DOT_SIZE}
-            style={{ fill: badge.fill }}
+            style={{ fill: badge.fill, transformBox: "fill-box", transformOrigin: "center" }}
             opacity="0"
           />
         </g>

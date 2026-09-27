@@ -4,13 +4,18 @@ import {
   type ScenePoint,
   type Visual,
 } from "../../../hooks/use-visual";
-import {
-  useScrollerEvent,
-  type ScrollerEvent,
-} from "../../../components/scroller";
+import { useScrollerEvent, type ScrollerEvent } from "../../../components/scroller";
 import { motion, useAnimate } from "motion/react";
 import { useLayoutEffect, useRef } from "react";
-import { clearRoute, LinkFills, NODE_SCALE, routeSequence, SmallScreenCenter } from "./network";
+import {
+  clearRoute,
+  LinkFills,
+  NODE_SCALE,
+  routeSequence,
+  SmallScreenCenter,
+  LINK_WIDTH,
+  SHAPE_STROKE,
+} from "./network";
 
 const pentagonScene: SceneDefinition = {
   initial: {
@@ -103,14 +108,11 @@ type SendPacketEvent = ScrollerEvent & {
 function isSendPacketEvent(event: ScrollerEvent): event is SendPacketEvent {
   return (
     event.type === "send-packet" &&
-    (event.random === true ||
-      (typeof event.from === "string" && typeof event.to === "string"))
+    (event.random === true || (typeof event.from === "string" && typeof event.to === "string"))
   );
 }
 
-function randomConnectedPair(
-  scene: ScenePoint[],
-): [ScenePoint, ScenePoint] | null {
+function randomConnectedPair(scene: ScenePoint[]): [ScenePoint, ScenePoint] | null {
   if (scene.length < 2) return null;
 
   const fromIndex = Math.floor(Math.random() * scene.length);
@@ -129,9 +131,7 @@ export function LittleInternet() {
   useScrollerEvent((event) => {
     if (!isSendPacketEvent(event)) return;
 
-    const [randomFrom, randomTo] = event.random
-      ? (randomConnectedPair(scene) ?? [])
-      : [];
+    const [randomFrom, randomTo] = event.random ? (randomConnectedPair(scene) ?? []) : [];
     const from = randomFrom ?? scene.find((point) => point.id === event.from);
     const to = randomTo ?? scene.find((point) => point.id === event.to);
     if (!from || !to) return;
@@ -156,9 +156,7 @@ export function LittleInternet() {
     animationRef.current = null;
     clearRoute(animate);
   }, [layoutKey, animate]);
-  const links = scene.flatMap((from, index) =>
-    scene.slice(index + 1).map((to) => ({ from, to })),
-  );
+  const links = scene.flatMap((from, index) => scene.slice(index + 1).map((to) => ({ from, to })));
   return (
     <div className="w-full">
       <svg
@@ -188,7 +186,7 @@ export function LittleInternet() {
                 }}
                 transition={SWIFT_TRANSITION}
                 vectorEffect="non-scaling-stroke"
-                strokeWidth="6"
+                strokeWidth={LINK_WIDTH}
               />
             ))}
           </g>
@@ -217,11 +215,7 @@ export function LittleInternet() {
 
 function ScenePoint({ point }: { point: ScenePoint }) {
   return (
-    <motion.g
-      animate={{ x: point.x, y: point.y }}
-      initial={false}
-      transition={SWIFT_TRANSITION}
-    >
+    <motion.g animate={{ x: point.x, y: point.y }} initial={false} transition={SWIFT_TRANSITION}>
       <g className={NODE_SCALE}>
         <Shape type={point.shape} className={point.className} />
       </g>
@@ -229,20 +223,13 @@ function ScenePoint({ point }: { point: ScenePoint }) {
   );
 }
 
-function Shape({
-  type,
-  className,
-}: {
-  type: ScenePoint["shape"];
-  className?: string;
-}) {
+function Shape({ type, className }: { type: ScenePoint["shape"]; className?: string }) {
   const triangleHeight = Math.sqrt(3) / 2;
   switch (type) {
     case "circle":
       return (
         <circle
-          className={`${className} stroke-current`}
-          strokeWidth="3"
+          className={`${className} stroke-current ${SHAPE_STROKE}`}
           vectorEffect="non-scaling-stroke"
           r="0.4"
         />
@@ -252,8 +239,7 @@ function Shape({
         <rect
           x="-0.4"
           y="-0.4"
-          className={`${className} stroke-current`}
-          strokeWidth="3"
+          className={`${className} stroke-current ${SHAPE_STROKE}`}
           vectorEffect="non-scaling-stroke"
           width="0.8"
           height="0.8"
@@ -263,9 +249,8 @@ function Shape({
       return (
         <polygon
           points={`0,${(-2 * triangleHeight) / 3} 0.5,${triangleHeight / 3} -0.5,${triangleHeight / 3}`}
-          className={`${className} stroke-current`}
-          strokeWidth="3"
-          strokeLinejoin="round"
+          className={`${className} stroke-current ${SHAPE_STROKE}`}
+          strokeLinejoin="miter"
           vectorEffect="non-scaling-stroke"
         />
       );
@@ -273,8 +258,7 @@ function Shape({
       return (
         <polygon
           points="0,-0.6 0.48,0 0,0.6 -0.48,0"
-          className={`${className} stroke-current`}
-          strokeWidth="3"
+          className={`${className} stroke-current ${SHAPE_STROKE}`}
           vectorEffect="non-scaling-stroke"
         />
       );
@@ -310,13 +294,17 @@ function VertexLabel({
           transition={SWIFT_TRANSITION}
           x2={0}
           y2={0}
-          className="text-gray-11"
-          stroke="currentColor"
-          strokeWidth="1.5"
+          stroke="black"
+          strokeDasharray="4 3"
+          strokeWidth="1"
           vectorEffect="non-scaling-stroke"
         />
-        <motion.g animate={{ x: offsetX, y: offsetY }} initial={false} transition={SWIFT_TRANSITION}>
-          <rect x="-0.35" y="-0.35" width="0.7" height="0.7" rx="0.08" className="fill-gray-12" />
+        <motion.g
+          animate={{ x: offsetX, y: offsetY }}
+          initial={false}
+          transition={SWIFT_TRANSITION}
+        >
+          <rect x="-0.35" y="-0.35" width="0.7" height="0.7" className="fill-gray-12" />
           <text
             className="fill-gray-1 font-sans"
             fontSize="0.4"

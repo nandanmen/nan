@@ -8,7 +8,14 @@ import {
 } from "motion/react";
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import { useScroller, useScrollerEvent } from "../../../components/scroller";
-import { clearRoute, NODE_SCALE, routeSequence, type RoutePoint } from "./network";
+import {
+  clearRoute,
+  LINK_WIDTH,
+  NODE_SCALE,
+  routeSequence,
+  SHAPE_STROKE,
+  type RoutePoint,
+} from "./network";
 
 // Three networks connected in a chain, R1 — R2 — R3, across three scroller sections:
 // 0. data from 1.1 to 3.2 has to hop through R2;
@@ -40,8 +47,7 @@ const CHAIN_X: Record<RouterId, number> = { r1: 4, r2: 8, r3: 12 };
 const START_X: Record<RouterId, number> = { r1: 5.5, r2: 10.5, r3: 13 };
 const END_X: Record<RouterId, number> = { r1: 3, r2: 8, r3: 13 };
 
-// Link thickness in pixels; router 3 first appears as a square twice as wide.
-const LINK_WIDTH = 4;
+// Router 3 first appears as a square twice as wide as a link.
 const SQUARE_SIZE = LINK_WIDTH * 2;
 
 // Full router size, in viewBox units.
@@ -105,10 +111,6 @@ const SWIFT_TRANSITION = { type: "spring", stiffness: 280, damping: 18, mass: 0.
 const FADE_TRANSITION = { duration: 0.3 } as const;
 const INSTANT = { duration: 0 } as const;
 const LABEL_OFFSET_SCALE = 0.75;
-
-// Outlines of routers and computers: 1px, thickened on small screens to match
-// the (scaled-up) routing table borders there.
-const SHAPE_STROKE = "[stroke-width:1] max-lg:[stroke-width:1.5]";
 
 // Router 3 starts up in two stages: it appears as a small square that pushes the
 // others left and links up to router 2, then expands into a full router.

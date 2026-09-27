@@ -16,6 +16,8 @@ import {
   SmallScreenCenter,
   type RoutePoint,
   type RouterBadge,
+  LINK_WIDTH,
+  SHAPE_STROKE,
 } from "./network";
 
 const scenes: SceneDefinition[] = [
@@ -66,7 +68,7 @@ const LABEL_OFFSET_SCALE = 0.75;
 // Each router's card uses its network's color.
 const ROUTER_BADGES: Record<string, RouterBadge> = {
   routerOne: { label: "1", fill: "var(--blue-9)", text: "white" },
-  routerTwo: { label: "2", fill: "var(--red-9)", text: "white" },
+  routerTwo: { label: "2", fill: "var(--orange-8)", text: "white" },
 };
 
 type SendPacketEvent = ScrollerEvent & {
@@ -210,7 +212,7 @@ export function RouterNetwork() {
                 }}
                 transition={SWIFT_TRANSITION}
                 vectorEffect="non-scaling-stroke"
-                strokeWidth="6"
+                strokeWidth={LINK_WIDTH}
               />
             ))}
           </g>
@@ -236,7 +238,7 @@ export function RouterNetwork() {
                   ? {
                       ...point,
                       className: ["four", "five", "six"].includes(point.id)
-                        ? "fill-red-9"
+                        ? "fill-orange-8"
                         : "fill-blue-7",
                     }
                   : point
@@ -275,8 +277,7 @@ function Shape({ type, className }: { type: ScenePoint["shape"]; className?: str
     case "circle":
       return (
         <circle
-          className={`${className} stroke-current`}
-          strokeWidth="3"
+          className={`${className} stroke-current ${SHAPE_STROKE}`}
           vectorEffect="non-scaling-stroke"
           r="0.4"
         />
@@ -286,8 +287,7 @@ function Shape({ type, className }: { type: ScenePoint["shape"]; className?: str
         <rect
           x="-0.4"
           y="-0.4"
-          className={`${className} stroke-current`}
-          strokeWidth="3"
+          className={`${className} stroke-current ${SHAPE_STROKE}`}
           vectorEffect="non-scaling-stroke"
           width="0.8"
           height="0.8"
@@ -297,9 +297,8 @@ function Shape({ type, className }: { type: ScenePoint["shape"]; className?: str
       return (
         <polygon
           points={`0,${(-2 * triangleHeight) / 3} 0.5,${triangleHeight / 3} -0.5,${triangleHeight / 3}`}
-          className={`${className} stroke-current`}
-          strokeWidth="3"
-          strokeLinejoin="round"
+          className={`${className} stroke-current ${SHAPE_STROKE}`}
+          strokeLinejoin="miter"
           vectorEffect="non-scaling-stroke"
         />
       );
@@ -307,8 +306,7 @@ function Shape({ type, className }: { type: ScenePoint["shape"]; className?: str
       return (
         <polygon
           points="0,-0.6 0.48,0 0,0.6 -0.48,0"
-          className={`${className} stroke-current`}
-          strokeWidth="3"
+          className={`${className} stroke-current ${SHAPE_STROKE}`}
           vectorEffect="non-scaling-stroke"
         />
       );
@@ -344,9 +342,9 @@ function VertexLabel({
           transition={SWIFT_TRANSITION}
           x2={0}
           y2={0}
-          className="text-gray-11"
-          stroke="currentColor"
-          strokeWidth="1.5"
+          stroke="black"
+          strokeDasharray="4 3"
+          strokeWidth="1"
           vectorEffect="non-scaling-stroke"
         />
         <motion.g
@@ -354,7 +352,7 @@ function VertexLabel({
           initial={false}
           transition={SWIFT_TRANSITION}
         >
-          <rect x="-0.35" y="-0.35" width="0.7" height="0.7" rx="0.08" className="fill-gray-12" />
+          <rect x="-0.35" y="-0.35" width="0.7" height="0.7" className="fill-gray-12" />
           <text
             className="fill-gray-1 font-sans"
             fontSize="0.4"
