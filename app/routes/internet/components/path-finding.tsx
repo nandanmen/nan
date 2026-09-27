@@ -117,16 +117,18 @@ const LABEL_OFFSET_SCALE = 0.75;
 type StartupStage = 0 | 1 | 2;
 
 // When each part of the startup begins, and how long it takes, in seconds.
-const LINK_DELAY = 0.1;
-const LINK_DURATION = 0.3;
+// It fills most of a step's time while playing (see the `Steps` duration in
+// the article), finishing at about 2s.
+const LINK_DELAY = 0.25;
+const LINK_DURATION = 0.6;
 const MEET_AT = LINK_DELAY + LINK_DURATION;
-const TICK_DRAW_OUT = 0.3;
-// Router 3 starts expanding just after the two halves of the link meet.
-const EXPAND_AT = MEET_AT + 0.1;
+const TICK_DRAW_OUT = 0.4;
+// Router 3 starts expanding shortly after the two halves of the link meet.
+const EXPAND_AT = MEET_AT + 0.3;
 
 // Into stage 1: router 3 appears as it pushes the others left, then links up.
 const LINK_UP = {
-  square: { duration: 0.35, ease: "backOut" },
+  square: { duration: 0.5, ease: "backOut" },
   link: { delay: LINK_DELAY, duration: LINK_DURATION, ease: "easeInOut" },
 } as const;
 
@@ -141,8 +143,8 @@ const TICK_TRANSITION: Transition = {
 
 // Into stage 2: router 3 expands, then its label and routing table appear.
 const EXPAND = {
-  dots: { delay: 0.1, duration: 0.2 },
-  details: { delay: 0.25, duration: 0.25, ease: "easeOut" },
+  dots: { delay: 0.15, duration: 0.3 },
+  details: { delay: 0.4, duration: 0.4, ease: "easeOut" },
 } as const;
 
 // How far router 3's label and table travel as they appear.
