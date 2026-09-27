@@ -117,7 +117,7 @@ export function useSection() {
   return section;
 }
 
-const ACTIVE_THRESHOLD = 0.7;
+const ACTIVE_THRESHOLD = 0.55;
 
 function PaperGutter() {
   return (

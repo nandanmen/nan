@@ -5,7 +5,7 @@ import {
   type Visual,
 } from "../../../hooks/use-visual";
 import { useScrollerEvent, type ScrollerEvent } from "../../../components/scroller";
-import { motion, useAnimate } from "motion/react";
+import { useAnimate } from "motion/react";
 import { useLayoutEffect, useRef } from "react";
 import {
   clearRoute,
@@ -31,14 +31,12 @@ const scenes: SceneDefinition[] = [
     routerOne: { x: 8, y: 6 },
   },
   {
-    one: { x: 5, y: 5, label: { x: 4, y: 4, text: "1.1" } },
-    two: { x: 4, y: 7, label: { x: 2.5, y: 7, text: "1.2" } },
-    three: { x: 7, y: 4, label: { x: 7, y: 2.5, text: "1.3" } },
-    routerOne: { x: 7, y: 7 },
-    four: { x: 12, y: 9, label: { x: 13.5, y: 9, text: "2.1" } },
-    five: { x: 11, y: 11, label: { x: 12, y: 12, text: "2.2" } },
-    six: { x: 9, y: 12, label: { x: 9, y: 13.5, text: "2.3" } },
-    routerTwo: { x: 9, y: 9 },
+    one: { x: 2, y: 5, label: { x: 2, y: 3.5, text: "1" } },
+    two: { x: 2, y: 9, label: { x: 2, y: 10.5, text: "2" } },
+    routerOne: { x: 5.5, y: 7 },
+    three: { x: 14, y: 5, label: { x: 14, y: 3.5, text: "3" } },
+    four: { x: 14, y: 9, label: { x: 14, y: 10.5, text: "4" } },
+    routerTwo: { x: 10.5, y: 7 },
   },
 ];
 
@@ -49,20 +47,12 @@ const routerNetworkVisual: Visual = {
     three: { shape: "triangle", className: "fill-red-8", label: "3" },
     four: { shape: "circle", className: "fill-cyan-9", label: "2.1" },
     five: { shape: "diamond", className: "fill-green-9", label: "2.2" },
-    six: { shape: "square", className: "fill-blue-9", label: "2.3" },
     routerOne: { shape: "router", className: "fill-white", label: "R1" },
     routerTwo: { shape: "router", className: "fill-white", label: "R2" },
   },
   scenes,
   events: ["send-packet"],
 };
-
-const SWIFT_TRANSITION = {
-  type: "spring",
-  stiffness: 280,
-  damping: 18,
-  mass: 0.3,
-} as const;
 
 const LABEL_OFFSET_SCALE = 0.75;
 
@@ -71,6 +61,42 @@ const ROUTER_BADGES: Record<string, RouterBadge> = {
   routerOne: { label: "1", fill: "var(--blue-9)", text: "white" },
   routerTwo: { label: "2", fill: "var(--orange-8)", text: "white" },
 };
+
+// With two networks, each router knows which router every computer in the
+// other network sits behind. Computers are named by their point id.
+const ROUTING_TABLES: Record<string, { to: string; via: string }[]> = {
+  routerOne: [
+    { to: "three", via: "routerTwo" },
+    { to: "four", via: "routerTwo" },
+  ],
+  routerTwo: [
+    { to: "one", via: "routerOne" },
+    { to: "two", via: "routerOne" },
+  ],
+};
+
+// Routing tables hang this far below their router's center, and are sized in
+// the same units as the routers (before NODE_SCALE enlarges both). Each row is
+// a computer's shape, an arrow, and the badge of the router to send it to,
+// with the same padding on every side.
+const TABLE_OFFSET = 1;
+const TABLE_PADDING = 0.18;
+const TABLE_GAP = 0.12;
+const TABLE_SHAPE_SIZE = 0.5;
+
+// How much larger than a circle each shape is (its widest side over the
+// circle's 0.8), and how far its center sits above its middle, so each fits a
+// table cell the way a circle does.
+const TRIANGLE_HEIGHT = Math.sqrt(3) / 2;
+const SHAPE_FIT: Partial<Record<ScenePoint["shape"], { size: number; offsetY: number }>> = {
+  triangle: { size: 1 / 0.8, offsetY: -TRIANGLE_HEIGHT / 6 },
+  diamond: { size: 1.2 / 0.8, offsetY: 0 },
+};
+const TABLE_ARROW_WIDTH = 0.3;
+const TABLE_BADGE_SIZE = 0.5;
+const TABLE_ROW_HEIGHT = TABLE_BADGE_SIZE + 2 * TABLE_PADDING;
+const TABLE_WIDTH =
+  2 * TABLE_PADDING + TABLE_SHAPE_SIZE + TABLE_ARROW_WIDTH + TABLE_BADGE_SIZE + 2 * TABLE_GAP;
 
 type SendPacketEvent = ScrollerEvent & {
   type: "send-packet";
@@ -95,10 +121,8 @@ const firstNetworkConnections = [
 const twoNetworkConnections = [
   ["routerOne", "one"],
   ["routerOne", "two"],
-  ["routerOne", "three"],
+  ["routerTwo", "three"],
   ["routerTwo", "four"],
-  ["routerTwo", "five"],
-  ["routerTwo", "six"],
   ["routerOne", "routerTwo"],
 ] as const;
 
@@ -147,7 +171,6 @@ function findRoute(
 
 export function RouterNetwork() {
   const scene = useVisual(routerNetworkVisual);
-  const previousPoints = useRef(new Map<string, ScenePoint>());
   const [scope, animate] = useAnimate();
   const animationRef = useRef<{ stop: () => void } | null>(null);
 
@@ -170,11 +193,8 @@ export function RouterNetwork() {
     });
   });
 
-  useLayoutEffect(() => {
-    previousPoints.current = new Map(scene.map((point) => [point.id, point]));
-  }, [scene]);
-
-  // A drawn route no longer lines up once the points move, so clear it.
+  // Scrolling to the other section swaps the drawing at once, without animating
+  // between the two. A drawn route no longer lines up, so clear it.
   const layoutKey = scene.map((point) => `${point.id}:${point.x},${point.y}`).join(" ");
   useLayoutEffect(() => {
     animationRef.current?.stop();
@@ -183,6 +203,17 @@ export function RouterNetwork() {
   }, [layoutKey, animate]);
 
   const hasSecondNetwork = scene.some((point) => point.id === "routerTwo");
+  // With two networks, computers take their network's color.
+  const points = hasSecondNetwork
+    ? scene.map((point) =>
+        point.shape === "router"
+          ? point
+          : {
+              ...point,
+              className: ["three", "four"].includes(point.id) ? "fill-orange-8" : "fill-blue-7",
+            },
+      )
+    : scene;
 
   return (
     <div className="w-full">
@@ -197,26 +228,33 @@ export function RouterNetwork() {
         <SmallScreenCenter points={scene}>
           <g stroke="currentColor" className="text-gray-7">
             {links.map(({ from, to }) => (
-              <motion.line
+              <line
                 key={`${from.id}-${to.id}`}
-                animate={{
-                  x1: from.x,
-                  y1: from.y,
-                  x2: to.x,
-                  y2: to.y,
-                }}
-                initial={{
-                  x1: previousPoints.current.get(from.id)?.x ?? from.x,
-                  y1: previousPoints.current.get(from.id)?.y ?? from.y,
-                  x2: previousPoints.current.get(to.id)?.x ?? to.x,
-                  y2: previousPoints.current.get(to.id)?.y ?? to.y,
-                }}
-                transition={SWIFT_TRANSITION}
+                x1={from.x}
+                y1={from.y}
+                x2={to.x}
+                y2={to.y}
                 vectorEffect="non-scaling-stroke"
                 strokeWidth={LINK_WIDTH}
               />
             ))}
           </g>
+          {hasSecondNetwork &&
+            scene
+              .filter((point) => ROUTING_TABLES[point.id])
+              .map((router) => (
+                <line
+                  key={`${router.id}-table-link`}
+                  x1={router.x}
+                  y1={router.y}
+                  x2={router.x}
+                  y2={router.y + TABLE_OFFSET}
+                  stroke="black"
+                  strokeDasharray="4 3"
+                  strokeWidth="1"
+                  vectorEffect="non-scaling-stroke"
+                />
+              ))}
           <LinkFills count={links.length} />
           {scene.map(
             (point) =>
@@ -231,21 +269,21 @@ export function RouterNetwork() {
                 />
               ),
           )}
-          {scene.map((point) => (
-            <ScenePoint
-              key={point.id}
-              point={
-                hasSecondNetwork && point.shape !== "router"
-                  ? {
-                      ...point,
-                      className: ["four", "five", "six"].includes(point.id)
-                        ? "fill-orange-8"
-                        : "fill-blue-7",
-                    }
-                  : point
-              }
-            />
+          {points.map((point) => (
+            <ScenePoint key={point.id} point={point} />
           ))}
+          {hasSecondNetwork &&
+            scene
+              .filter((point) => ROUTING_TABLES[point.id])
+              .map((router) => (
+                <RoutingTable
+                  key={`${router.id}-table`}
+                  x={router.x}
+                  y={router.y + TABLE_OFFSET}
+                  routes={ROUTING_TABLES[router.id]}
+                  points={points}
+                />
+              ))}
         </SmallScreenCenter>
       </svg>
     </div>
@@ -254,12 +292,10 @@ export function RouterNetwork() {
 
 function ScenePoint({ point }: { point: ScenePoint }) {
   return (
-    <motion.g
-      animate={{ x: point.x, y: point.y }}
+    <g
       data-point-id={point.id}
       data-router={point.shape === "router" ? point.id : undefined}
-      initial={false}
-      transition={SWIFT_TRANSITION}
+      transform={`translate(${point.x} ${point.y})`}
     >
       <g className={NODE_SCALE}>
         {point.shape === "router" ? (
@@ -268,7 +304,7 @@ function ScenePoint({ point }: { point: ScenePoint }) {
           <Shape type={point.shape} className={point.className} />
         )}
       </g>
-    </motion.g>
+    </g>
   );
 }
 
@@ -316,6 +352,99 @@ function Shape({ type, className }: { type: ScenePoint["shape"]; className?: str
   }
 }
 
+// A table of which router to send each computer's data to, hanging from its
+// top-center at (x, y).
+function RoutingTable({
+  x,
+  y,
+  routes,
+  points,
+}: {
+  x: number;
+  y: number;
+  routes: { to: string; via: string }[];
+  points: ScenePoint[];
+}) {
+  const left = -TABLE_WIDTH / 2;
+  const height = routes.length * TABLE_ROW_HEIGHT;
+  const shapeX = left + TABLE_PADDING;
+  const arrowX = shapeX + TABLE_SHAPE_SIZE + TABLE_GAP;
+  const badgeX = arrowX + TABLE_ARROW_WIDTH + TABLE_GAP;
+  const arrowHead = 0.09;
+
+  return (
+    <g transform={`translate(${x} ${y})`}>
+      <g className={`${NODE_SCALE} font-sans`}>
+        <rect
+          x={left}
+          width={TABLE_WIDTH}
+          height={height}
+          fill="white"
+          stroke="black"
+          strokeWidth="1"
+          vectorEffect="non-scaling-stroke"
+        />
+        {routes.map((route, index) => {
+          const top = index * TABLE_ROW_HEIGHT;
+          const middle = top + TABLE_ROW_HEIGHT / 2;
+          const badge = ROUTER_BADGES[route.via];
+          const computer = points.find((point) => point.id === route.to);
+          return (
+            <g key={route.to}>
+              {index > 0 && (
+                <line
+                  x1={left}
+                  x2={-left}
+                  y1={top}
+                  y2={top}
+                  stroke="black"
+                  strokeDasharray="4 3"
+                  strokeWidth="1"
+                  vectorEffect="non-scaling-stroke"
+                />
+              )}
+              {computer && (
+                // Shrink each shape to half size, and the larger ones further to match a circle.
+                <g
+                  transform={`translate(${shapeX + TABLE_SHAPE_SIZE / 2} ${middle}) scale(${TABLE_SHAPE_SIZE / (SHAPE_FIT[computer.shape]?.size ?? 1)}) translate(0 ${-(SHAPE_FIT[computer.shape]?.offsetY ?? 0)})`}
+                >
+                  <Shape type={computer.shape} className={computer.className} />
+                </g>
+              )}
+              <path
+                d={`M ${arrowX} ${middle} h ${TABLE_ARROW_WIDTH} m ${-arrowHead} ${-arrowHead} l ${arrowHead} ${arrowHead} l ${-arrowHead} ${arrowHead}`}
+                stroke="var(--gray-12)"
+                strokeWidth="1.25"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                vectorEffect="non-scaling-stroke"
+              />
+              <rect
+                x={badgeX}
+                y={middle - TABLE_BADGE_SIZE / 2}
+                width={TABLE_BADGE_SIZE}
+                height={TABLE_BADGE_SIZE}
+                style={{ fill: badge.fill }}
+              />
+              <text
+                x={badgeX + TABLE_BADGE_SIZE / 2}
+                y={middle}
+                style={{ fill: badge.text }}
+                fontSize="0.3"
+                fontWeight="700"
+                textAnchor="middle"
+                dy="0.35em"
+              >
+                {badge.label}
+              </text>
+            </g>
+          );
+        })}
+      </g>
+    </g>
+  );
+}
+
 function VertexLabel({
   label,
   x,
@@ -335,12 +464,11 @@ function VertexLabel({
   // Drawn around the point it labels, so scaling it up on small screens also
   // moves the label clear of the (equally scaled) shape.
   return (
-    <motion.g animate={{ x: targetX, y: targetY }} initial={false} transition={SWIFT_TRANSITION}>
+    <g transform={`translate(${targetX} ${targetY})`}>
       <g className={NODE_SCALE}>
-        <motion.line
-          animate={{ x1: offsetX, y1: offsetY }}
-          initial={false}
-          transition={SWIFT_TRANSITION}
+        <line
+          x1={offsetX}
+          y1={offsetY}
           x2={0}
           y2={0}
           stroke="black"
@@ -348,14 +476,10 @@ function VertexLabel({
           strokeWidth="1"
           vectorEffect="non-scaling-stroke"
         />
-        <motion.g
-          animate={{ x: offsetX, y: offsetY }}
-          initial={false}
-          transition={SWIFT_TRANSITION}
-        >
+        <g transform={`translate(${offsetX} ${offsetY})`}>
           <LabelTag text={label} />
-        </motion.g>
+        </g>
       </g>
-    </motion.g>
+    </g>
   );
 }

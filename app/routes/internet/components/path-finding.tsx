@@ -18,11 +18,12 @@ import {
   LabelTag,
 } from "./network";
 
-// Three networks connected in a chain, R1 — R2 — R3, across three scroller sections:
+// Three networks connected in a chain, R1 — R2 — R3, across four scroller sections:
 // 0. data from 1.1 to 3.2 has to hop through R2;
 // 1. stepped through by the text: R3 starts up, announces 3.x to R2, learns
 //    R2's routes, and R2 passes 3.x on to R1;
-// 2. with a direct R1 — R3 link running over R2, R1 hears about 3.x twice.
+// 2. with a direct R1 — R3 link running over R2, R3 announces 3.x to both;
+// 3. R2 passes 3.x on to R1 too, so R1 hears about it twice.
 
 type Point = { x: number; y: number };
 type Shape = "circle" | "square" | "triangle";
@@ -97,7 +98,7 @@ const computers: Computer[] = [
 ];
 
 // Buttons each section's text can use.
-const SECTION_EVENTS = [["send-packet"], ["announce"], ["announce", "forward"]];
+const SECTION_EVENTS = [["send-packet"], ["announce"], ["announce"], ["forward"]];
 
 // The top and bottom of each section's content in the viewBox on small screens,
 // with shapes drawn at their larger size: the labelled computers in the first, and the
@@ -105,6 +106,7 @@ const SECTION_EVENTS = [["send-packet"], ["announce"], ["announce", "forward"]];
 const SMALL_SCREEN_CROP: [number, number][] = [
   [2.5, 13.5],
   [5.9, 12.5],
+  [5.4, 13.6],
   [5.4, 13.6],
 ];
 
@@ -228,7 +230,8 @@ function tablesAfter(step: number): Record<RouterId, Route[]> {
 
 const NO_ROUTES: Record<RouterId, Route[]> = { r1: [], r2: [], r3: [] };
 
-// In the last section, what R1 and R2 have learned once R3 has announced 3.x to both.
+// What R1 and R2 have learned once R3 has announced 3.x to both, where the last
+// section starts.
 const AFTER_DIRECT_ANNOUNCEMENT: Record<RouterId, Route[]> = {
   r1: [{ prefix: "3.x", via: "r3" }],
   r2: [{ prefix: "3.x", via: "r3" }],
@@ -341,14 +344,14 @@ function usePixelsPerUnit(svgRef: { current: Element | null }) {
 }
 
 export function PathFinding() {
-  const { activeSection, slot, setAvailableEvents } = useScroller();
+  const { activeSection, setAvailableEvents } = useScroller();
   const sceneIndex = Math.min(activeSection, SECTION_EVENTS.length - 1);
   const [scope, animate] = useAnimate();
   const pixelsPerUnit = usePixelsPerUnit(scope);
   const routeAnimation = useRef<{ stop: () => void } | null>(null);
 
   // The second section's step, and routes learned from announcements that have
-  // arrived during the current step (or the last section's announcement).
+  // arrived during the current step (or the last two sections' announcements).
   const [step, setStep] = useState(0);
   const [learned, setLearned] = useState(NO_ROUTES);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
@@ -402,16 +405,15 @@ export function PathFinding() {
     return () => setAvailableEvents(null);
   }, [activeSection, sceneIndex, setAvailableEvents]);
 
-  // Each section starts from a clean slate, and the second one from its first step.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: only reset when the section or figure copy changes
-  // On small screens the last section shows a second copy of the figure, below
-  // the Forward button, which starts where the first copy's announcement ends.
+  // Each section starts from a clean slate, the second one from its first step,
+  // and the last one where the previous section's announcement ends.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: only reset when the section changes
   useLayoutEffect(() => {
     reset();
-    if (sceneIndex === 2 && slot > 0) setLearned(AFTER_DIRECT_ANNOUNCEMENT);
+    if (sceneIndex === 3) setLearned(AFTER_DIRECT_ANNOUNCEMENT);
     setStep(0);
     setStartup({ stage: 0, from: 0, instant: false });
-  }, [sceneIndex, slot]);
+  }, [sceneIndex]);
 
   const dot = (router: RouterId, index: number) =>
     `[data-router="${router}"] [data-router-dot="${index}"]`;
@@ -555,7 +557,7 @@ export function PathFinding() {
       // R3 tells both its neighbors it can receive 3.x.
       reset();
       pulseThenSend("r3", ["r2", "r1"], ["3.x"]);
-    } else if (event.type === "forward" && sceneIndex === 2) {
+    } else if (event.type === "forward" && sceneIndex === 3) {
       // Not knowing R1 already heard from R3, R2 passes 3.x on to R1 too,
       // starting from where R3's announcement left the tables.
       reset();
@@ -581,14 +583,14 @@ export function PathFinding() {
   const unlessHiding = (visible: boolean, transition: Transition): Transition =>
     visible ? transition : INSTANT;
   const computersShown = sceneIndex === 0;
-  const directLinkShown = sceneIndex === 2;
+  const directLinkShown = sceneIndex >= 2;
 
   const routerX = (id: RouterId) =>
     sceneIndex === 0 ? CHAIN_X[id] : sceneIndex === 1 && !linked ? START_X[id] : END_X[id];
   const middleX = (routerX("r2") + routerX("r3")) / 2;
 
   const tables =
-    sceneIndex === 1 ? tablesAfter(step - 1) : sceneIndex === 2 ? INITIAL_TABLES : NO_ROUTES;
+    sceneIndex === 1 ? tablesAfter(step - 1) : sceneIndex >= 2 ? INITIAL_TABLES : NO_ROUTES;
   const shownTables = Object.fromEntries(
     ROUTER_IDS.map((id) => [id, [...tables[id], ...learned[id]]]),
   ) as Record<RouterId, Route[]>;
@@ -999,7 +1001,7 @@ function RoutingTable({
           >
             {route.prefix}
           </span>
-          <span className="text-gray-10">→</span>
+          <span>→</span>
           <span
             className="flex items-center justify-center font-bold"
             style={{

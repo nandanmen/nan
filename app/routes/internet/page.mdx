@@ -27,7 +27,9 @@ Let's now add two more computers, giving us a total network size of five compute
 If we then add a 6th computer, we'll need to add 5 more connections:
 
 <Toolbar>
-  <ScrollerButton onClick={{ type: "add" }}>Add a computer</ScrollerButton>
+  <ScrollerButton onClick={{ type: "add" }} render={<Toolbar.Button />}>
+    Add a computer
+  </ScrollerButton>
   <ScrollerButton onClick={{ type: "reset" }} render={<Toolbar.Button />} shape="square">
     <span className="sr-only">Reset</span>
     <Icon type="reset" />
@@ -42,7 +44,7 @@ A 7th, 6 more connections, and so on. This quickly becomes impractical!
 
 One way to fix this is to have a dedicated _central_ computer whose sole purpose is to connect the computers in the network to each other. In this setup, the computers only need to be physically connected to the central computer.
 
-When a computer wants to send data to another, it'll send it to the central computer with the destination IP address. Since this central computer knows all of the IP addresses in the network, it can correctly _route_ the data to its destination.
+For example, if computer 1 wants to send data to computer 2, it sends it to the central computer saying "I want to send this to computer 2". Since the central computer is linked to computer 2, it can send it over its link.
 
 <ScrollerButton onClick={{ type: "send-packet", from: "one", to: "two" }}>Send data</ScrollerButton>
 
@@ -52,11 +54,19 @@ We'll call this central computer a **router** because, er, it routes.
 
 Let's introduce another network to the mix.
 
-Here, we have two networks, Network 1 and Network 2, each with three connected computers. The routers of the two networks are physically connected to each other.
+Here, we have two networks, 1 and 2, each with two connected computers. Both router are connected to each other. In this setup, the routers only know about the computers in their own network, and not the computers in the other network. **How can a computer from one network send data to another network?**
 
-In this setup, the routers only know about the computers in their own network, and not the computers in the other network. How can it send data to them?
+One option is to have every router know about every computer, including those not in its own network. Here, both router 1 and router 2 know about all four computers in the Internet.
 
-One option is to have every router know about every computer, including those not in its own network. But this feels wasteful—the other router already knows about its own computers, so why should we duplicate?
+If computer 1 wants to send data to computer 4:
+
+1. Computer 1 will send it to router 1, telling it to forward to computer 4;
+2. Router 1 sees that computer 4 belongs to router 2 and sends it to router 2;
+3. Router 2 sends it to computer 4.
+
+<ScrollerButton onClick={{ type: "send-packet", from: "one", to: "four" }}>Send data</ScrollerButton>
+
+---
 
 **What if we include the network number in each computer's label?** Here, computer 1 becomes `1.1`, computer 2 becomes `1.2`, computer 5 becomes `2.2`, and so on.
 
@@ -124,6 +134,8 @@ Let's now add a direct connection between router 1 and router 3.
 This time, when router 3 starts up, it will announce to _both_ router 1 and router 2 that it can receive all addresses starting with `3.x`.
 
 <ScrollerButton onClick={{ type: "announce" }}>Announce 3.x</ScrollerButton>
+
+---
 
 Router 2 doesn't know that router 1 and router 3 are directly connected to each other, so it will also announce to router 1 that it can receive all addresses starting with `3.x`.
 
