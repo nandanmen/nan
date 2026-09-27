@@ -341,7 +341,7 @@ function usePixelsPerUnit(svgRef: { current: Element | null }) {
 }
 
 export function PathFinding() {
-  const { activeSection, setAvailableEvents } = useScroller();
+  const { activeSection, slot, setAvailableEvents } = useScroller();
   const sceneIndex = Math.min(activeSection, SECTION_EVENTS.length - 1);
   const [scope, animate] = useAnimate();
   const pixelsPerUnit = usePixelsPerUnit(scope);
@@ -403,12 +403,15 @@ export function PathFinding() {
   }, [activeSection, sceneIndex, setAvailableEvents]);
 
   // Each section starts from a clean slate, and the second one from its first step.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: only reset when the section changes
+  // biome-ignore lint/correctness/useExhaustiveDependencies: only reset when the section or figure copy changes
+  // On small screens the last section shows a second copy of the figure, below
+  // the Forward button, which starts where the first copy's announcement ends.
   useLayoutEffect(() => {
     reset();
+    if (sceneIndex === 2 && slot > 0) setLearned(AFTER_DIRECT_ANNOUNCEMENT);
     setStep(0);
     setStartup({ stage: 0, from: 0, instant: false });
-  }, [sceneIndex]);
+  }, [sceneIndex, slot]);
 
   const dot = (router: RouterId, index: number) =>
     `[data-router="${router}"] [data-router-dot="${index}"]`;

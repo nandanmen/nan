@@ -17,8 +17,9 @@ import { cn } from "cn";
 
 type Section = {
   index: number;
-  // The section's own copy of the figure, shown below it on small screens.
-  inlineFigure: FigureState;
+  // Listeners for each of the section's own copies of the figure, shown beside
+  // its controls on small screens.
+  inlineListeners: (slot: number) => Set<ScrollerEventListener>;
 };
 
 export type ScrollerEvent = {
@@ -32,6 +33,10 @@ type AvailableEvents = { index: number; types: string[] } | null;
 
 type FigureState = {
   activeSection: number;
+  // Which of its section's small-screen copies this figure is, in order. A
+  // section with several controls shows a copy next to each, and later copies
+  // can start from where the earlier ones leave off. The sticky figure is 0.
+  slot: number;
   listeners: Set<ScrollerEventListener>;
   availableEvents: AvailableEvents;
   setAvailableEvents: Dispatch<SetStateAction<AvailableEvents>>;
@@ -39,6 +44,8 @@ type FigureState = {
 
 const ScrollerContext = createContext<FigureState | null>(null);
 const SectionProvider = createContext<Section | null>(null);
+// The small-screen figure copy that the controls inside drive.
+const FigureSlotContext = createContext(0);
 
 type ScrollerProps = {
   children: ReactNode;
@@ -129,9 +136,10 @@ function PaperGutter() {
 }
 
 export function useScrollerDispatch() {
-  const { index, inlineFigure } = useSection();
+  const { index, inlineListeners } = useSection();
+  const slot = useContext(FigureSlotContext);
   const scroller = useScroller();
-  const listeners = useIsWide() ? scroller.listeners : inlineFigure.listeners;
+  const listeners = useIsWide() ? scroller.listeners : inlineListeners(slot);
   return useCallback(
     (event: ScrollerEvent) => {
       for (const listener of listeners) listener(event, index);
@@ -212,6 +220,7 @@ export function Scroller({ children, figure }: ScrollerProps) {
     <ScrollerContext
       value={{
         activeSection,
+        slot: 0,
         listeners: listenersRef.current,
         availableEvents,
         setAvailableEvents,
@@ -276,20 +285,61 @@ function figurePlacementOf(node: ReactNode): FigurePlacement | null {
 }
 
 /**
- * Puts a section's small-screen figure next to the first control that drives
- * it, so the result of pressing it shows up right there, or at the end of the
- * section if nothing drives it.
+ * Puts a copy of the section's small-screen figure next to each control that
+ * drives it, so the result of pressing it shows up right there, or one at the
+ * end of the section if nothing drives it. `renderFigure` draws the copy for a
+ * given slot; controls are wrapped so they drive their own copy.
  */
-function placeInlineFigure(children: ReactNode, figure: ReactNode) {
-  const nodes = Children.toArray(children);
-  for (const [index, node] of nodes.entries()) {
+function placeInlineFigures(children: ReactNode, renderFigure: (slot: number) => ReactNode) {
+  const placed: ReactNode[] = [];
+  let slot = 0;
+  for (const node of Children.toArray(children)) {
     const placement = figurePlacementOf(node);
-    if (placement) {
-      const at = placement === "before" ? index : index + 1;
-      return [...nodes.slice(0, at), figure, ...nodes.slice(at)];
+    if (!placement) {
+      placed.push(node);
+      continue;
     }
+    const control = (
+      <FigureSlotContext key={`control-${slot}`} value={slot}>
+        {node}
+      </FigureSlotContext>
+    );
+    const figure = renderFigure(slot);
+    placed.push(...(placement === "before" ? [figure, control] : [control, figure]));
+    slot++;
   }
-  return [...nodes, figure];
+  if (slot === 0) placed.push(renderFigure(0));
+  return placed;
+}
+
+/** One of a section's small-screen figure copies, with its own state. */
+function InlineFigure({
+  figure,
+  index,
+  slot,
+  listeners,
+}: {
+  figure: ReactNode;
+  index: number;
+  slot: number;
+  listeners: Set<ScrollerEventListener>;
+}) {
+  const [availableEvents, setAvailableEvents] = useState<AvailableEvents>(null);
+  const state = useMemo(
+    () => ({ activeSection: index, slot, listeners, availableEvents, setAvailableEvents }),
+    [index, slot, listeners, availableEvents],
+  );
+
+  return (
+    <ScrollerContext value={state}>
+      {/* Stretched to the screen's edges on a darker background. */}
+      <div className="lg:hidden [container-type:inline-size] mx-[calc(50%-50vw)] bg-gray-3 py-8">
+        {/* flow-root keeps a figure's negative margins (trimming empty space)
+            from pulling this box up over the text around it. */}
+        <div className="relative flow-root [--grid-size:12.5cqw]">{figure}</div>
+      </div>
+    </ScrollerContext>
+  );
 }
 
 function ScrollerSection({
@@ -303,31 +353,34 @@ function ScrollerSection({
   index: number;
   sectionRef: (element: HTMLElement | null) => void;
 }) {
-  const [availableEvents, setAvailableEvents] = useState<AvailableEvents>(null);
-  const listeners = useRef(new Set<ScrollerEventListener>()).current;
-  const inlineFigure = useMemo(
-    () => ({ activeSection: index, listeners, availableEvents, setAvailableEvents }),
-    [index, listeners, availableEvents],
+  const listenersBySlot = useRef(new Map<number, Set<ScrollerEventListener>>()).current;
+  const inlineListeners = useCallback(
+    (slot: number) => {
+      let listeners = listenersBySlot.get(slot);
+      if (!listeners) {
+        listeners = new Set();
+        listenersBySlot.set(slot, listeners);
+      }
+      return listeners;
+    },
+    [listenersBySlot],
   );
 
   return (
-    <SectionProvider value={{ index, inlineFigure }}>
+    <SectionProvider value={{ index, inlineListeners }}>
       <section
         className="lg:min-h-[45vh] grid gap-y-6 auto-rows-min lg:col-start-2"
         ref={sectionRef}
       >
-        {placeInlineFigure(
-          children,
-          // On small screens, each section shows its own copy of the figure,
-          // stretched to the screen's edges on a darker background.
-          <ScrollerContext key="inline-figure" value={inlineFigure}>
-            <div className="lg:hidden [container-type:inline-size] mx-[calc(50%-50vw)] bg-gray-3 py-8">
-              {/* flow-root keeps a figure's negative margins (trimming empty
-                  space) from pulling this box up over the text around it. */}
-              <div className="relative flow-root [--grid-size:12.5cqw]">{figure}</div>
-            </div>
-          </ScrollerContext>,
-        )}
+        {placeInlineFigures(children, (slot) => (
+          <InlineFigure
+            key={`inline-figure-${slot}`}
+            figure={figure}
+            index={index}
+            slot={slot}
+            listeners={inlineListeners(slot)}
+          />
+        ))}
       </section>
     </SectionProvider>
   );
