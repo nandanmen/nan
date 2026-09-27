@@ -280,7 +280,8 @@ function ScrollerSection({
         {children}
         {/* On small screens, each section shows its own scene right below its text. */}
         <ScrollerContext value={inlineFigure}>
-          <div className="lg:hidden [container-type:inline-size]">
+          {/* Stretched to the screen's edges on a darker background. */}
+          <div className="lg:hidden [container-type:inline-size] mx-[calc(50%-50vw)] bg-gray-3 py-8">
             <div className="relative [--grid-size:12.5cqw]">{figure}</div>
           </div>
         </ScrollerContext>

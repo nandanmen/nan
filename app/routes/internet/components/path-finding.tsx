@@ -6,7 +6,7 @@ import {
   useTransform,
   type Transition,
 } from "motion/react";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import { useScroller, useScrollerEvent } from "../../../components/scroller";
 import { clearRoute, NODE_SCALE, routeSequence, type RoutePoint } from "./network";
 
@@ -91,6 +91,15 @@ const computers: Computer[] = [
 
 // Buttons each section's text can use.
 const SECTION_EVENTS = [["send-packet"], ["announce"], ["announce"]];
+
+// The top and bottom of each section's content in the viewBox on small screens,
+// where shapes are drawn larger: the labelled computers in the first, and the
+// routers and their routing tables (up to three rows) in the others.
+const SMALL_SCREEN_CROP: [number, number][] = [
+  [2.5, 13.5],
+  [5.9, 12.5],
+  [5.4, 13.6],
+];
 
 const SWIFT_TRANSITION = { type: "spring", stiffness: 280, damping: 18, mass: 0.3 } as const;
 const FADE_TRANSITION = { duration: 0.3 } as const;
@@ -553,8 +562,20 @@ export function PathFinding() {
   const router3Scale = expanded ? 1 : linked ? smallScale : 0;
   const tickX = (END_X.r2 + END_X.r3) / 2;
 
+  // On small screens each section shows its own copy of the figure, which
+  // doesn't need to be square: trim it to the part of the viewBox its content
+  // spans. Margins in % are relative to the (square) figure's width.
+  const [cropTop, cropBottom] = SMALL_SCREEN_CROP[sceneIndex];
+  const cropStyle = {
+    "--crop-top": `${(-cropTop / VIEW_SIZE) * 100}%`,
+    "--crop-bottom": `${(-(VIEW_SIZE - cropBottom) / VIEW_SIZE) * 100}%`,
+  } as CSSProperties;
+
   return (
-    <div className="relative w-full">
+    <div
+      className="relative w-full max-lg:mt-(--crop-top) max-lg:mb-(--crop-bottom)"
+      style={cropStyle}
+    >
       <svg
         ref={scope}
         aria-label="Three networks connected in a chain of routers"
