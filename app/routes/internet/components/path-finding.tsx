@@ -618,13 +618,17 @@ export function PathFinding() {
           {/* The R2 — R3 link, in two halves that grow from each end toward the middle. */}
           {(["r2", "r3"] as const).map((id) => {
             const toward = Math.sign(middleX - routerX(id));
+            // Before router 3 is linked up, each half waits with no length at
+            // its router's final position, so it grows out from there toward
+            // the middle rather than from wherever router 2 started.
+            const anchor = linked ? routerX(id) : END_X[id];
             return (
               <motion.line
                 key={`link-half-${id}`}
                 initial={false}
                 animate={{
-                  x1: routerX(id),
-                  x2: linked ? middleX + toward * LINK_OVERLAP : routerX(id),
+                  x1: anchor,
+                  x2: linked ? middleX + toward * LINK_OVERLAP : anchor,
                 }}
                 transition={linkingUp ? LINK_UP.link : move}
                 y1={ROUTER_Y}
