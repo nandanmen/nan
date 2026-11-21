@@ -1,7 +1,7 @@
 import type { Config } from "@react-router/dev/config";
 
 export default {
-  basename: "/p/",
+  basename: "/",
   ssr: true,
   future: {
     unstable_viteEnvironmentApi: true,

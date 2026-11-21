@@ -369,7 +369,12 @@ function ScrollerSection({
   return (
     <SectionProvider value={{ index, inlineListeners }}>
       <section
-        className="lg:min-h-[45vh] grid gap-y-6 auto-rows-min lg:col-start-2"
+        className={cn(
+          "lg:min-h-[45vh] grid gap-y-6 auto-rows-min lg:col-start-2",
+          // Extra space above every section but the first, roughly matching the space above the
+          // first section (the Scroller's lg:p-16).
+          "not-first:pt-12 lg:not-first:pt-16",
+        )}
         ref={sectionRef}
       >
         {placeInlineFigures(children, (slot) => (
