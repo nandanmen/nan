@@ -1,11 +1,9 @@
-import type { ReactNode } from "react";
-import { Button } from "../../components/button";
-import { CodeBlock } from "./code-block";
+import { CodeBlock } from "../../components/code-block";
+import { mdxComponents } from "../../components/mdx-components";
 import { Icon } from "../../components/icon";
 import { ScrollerButton } from "../../components/scroller-button";
 import { Scroller } from "../../components/scroller";
 import { Steps } from "../../components/steps";
-import { Toolbar } from "../../components/toolbar";
 import InternetContent from "./page.mdx";
 import { Aside, Callout, Computer, ProblemStatement, Router } from "./components/prose";
 import { InterruptedWorldMap } from "./world-map";
@@ -51,40 +49,16 @@ export default function Internet() {
           <Provider>
             <InternetContent
               components={{
-                Button,
                 Icon,
                 Scroller,
                 ScrollerButton,
                 Steps,
-                Toolbar,
                 Aside,
                 Callout,
                 Computer,
                 Router,
                 ProblemStatement,
-                h2: ({ children }: { children: ReactNode }) => (
-                  <h2 className="text-2xl font-medium">{children}</h2>
-                ),
-                h3: ({ children }: { children: ReactNode }) => (
-                  <h3 className="text-xl font-medium">{children}</h3>
-                ),
-                ol: ({ children }: { children: ReactNode }) => (
-                  <ol className="grid list-decimal gap-y-2 pl-6 tabular-nums marker:text-gray-9">
-                    {children}
-                  </ol>
-                ),
-                ul: ({ children }: { children: ReactNode }) => (
-                  <ul className="grid list-disc gap-y-2 pl-6">{children}</ul>
-                ),
-                a: ({ children, href }: { children: ReactNode; href?: string }) => (
-                  <a className="underline [overflow-wrap:anywhere]" href={href}>
-                    {children}
-                  </a>
-                ),
-                strong: ({ children }: { children: ReactNode }) => (
-                  <strong className="font-medium">{children}</strong>
-                ),
-                pre: CodeBlock,
+                ...mdxComponents,
               }}
             />
           </Provider>

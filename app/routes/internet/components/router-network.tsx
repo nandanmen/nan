@@ -4,7 +4,7 @@ import {
   type ScenePoint,
   type Visual,
 } from "../../../hooks/use-visual";
-import { useScrollerEvent, type ScrollerEvent } from "../../../components/scroller";
+import { useScroller, useScrollerEvent, type ScrollerEvent } from "../../../components/scroller";
 import { useAnimate } from "motion/react";
 import { useLayoutEffect, useRef, useState } from "react";
 import {
@@ -41,6 +41,29 @@ const scenes: SceneDefinition[] = [
     four: { x: 14, y: 9, label: { x: 14, y: 10.5, text: "4" } },
     routerTwo: { x: 10.5, y: 7 },
   },
+  // The same two networks, with each computer labelled by its network.
+  {
+    one: { x: 2, y: 5, label: { x: 2, y: 3.5, text: "1.1" } },
+    two: { x: 2, y: 9, label: { x: 2, y: 10.5, text: "1.2" } },
+    routerOne: { x: 5.5, y: 7 },
+    three: { x: 14, y: 5, label: { x: 14, y: 3.5, text: "2.1" } },
+    four: { x: 14, y: 9, label: { x: 14, y: 10.5, text: "2.2" } },
+    routerTwo: { x: 10.5, y: 7 },
+  },
+  // A third network joins. The three routers form a triangle, each linked to
+  // the other two, with each network's computers on its outer side. Routers
+  // 1 and 2 hold their routing tables above them, clear of the links to 3.
+  {
+    one: { x: 2, y: 4.5, label: { x: 2, y: 3, text: "1.1" } },
+    two: { x: 2, y: 8.5, label: { x: 2, y: 10, text: "1.2" } },
+    routerOne: { x: 5, y: 6.5 },
+    three: { x: 14, y: 4.5, label: { x: 14, y: 3, text: "2.1" } },
+    four: { x: 14, y: 8.5, label: { x: 14, y: 10, text: "2.2" } },
+    routerTwo: { x: 11, y: 6.5 },
+    five: { x: 4.5, y: 12, label: { x: 4.5, y: 13.5, text: "3.1" } },
+    six: { x: 11.5, y: 12, label: { x: 11.5, y: 13.5, text: "3.2" } },
+    routerThree: { x: 8, y: 11 },
+  },
 ];
 
 const routerNetworkVisual: Visual = {
@@ -50,8 +73,10 @@ const routerNetworkVisual: Visual = {
     three: { shape: "circle", className: "fill-cyan-9", label: "3" },
     four: { shape: "triangle", className: "fill-red-8", label: "2.1" },
     five: { shape: "diamond", className: "fill-green-9", label: "2.2" },
+    six: { shape: "square", className: "fill-green-9", label: "3.2" },
     routerOne: { shape: "router", className: "fill-white", label: "R1" },
     routerTwo: { shape: "router", className: "fill-white", label: "R2" },
+    routerThree: { shape: "router", className: "fill-white", label: "R3" },
   },
   scenes,
   events: ["send-packet"],
@@ -63,26 +88,69 @@ const LABEL_OFFSET_SCALE = 0.75;
 const ROUTER_BADGES: Record<string, RouterBadge> = {
   routerOne: { label: "1", fill: "var(--blue-9)", text: "white" },
   routerTwo: { label: "2", fill: "var(--orange-8)", text: "white" },
+  routerThree: { label: "3", fill: "var(--green-9)", text: "white" },
 };
 
-// With two networks, each router knows which router every computer in the
-// other network sits behind. Computers are named by their point id.
-const ROUTING_TABLES: Record<string, { to: string; via: string }[]> = {
-  routerOne: [
-    { to: "three", via: "routerTwo" },
-    { to: "four", via: "routerTwo" },
-  ],
-  routerTwo: [
-    { to: "one", via: "routerOne" },
-    { to: "two", via: "routerOne" },
-  ],
+// Once there's more than one network, computers take their network's color.
+const NETWORK_OF: Record<string, number> = { one: 1, two: 1, three: 2, four: 2, five: 3, six: 3 };
+const NETWORK_FILLS: Record<number, string> = {
+  1: "fill-blue-7",
+  2: "fill-orange-8",
+  3: "fill-green-9",
 };
+
+// A routing table row sends either one computer (by point id) or a whole
+// network (by its number) on to a neighboring router.
+type Route = { via: string } & ({ to: string } | { network: number });
+type RoutingTables = Record<string, Route[]>;
+
+// Each section's routing tables. The first has a single router and none; in
+// the second, each router lists every computer in the other network; once
+// computers are labelled by network, routers only need a row per network.
+const SECTION_ROUTING_TABLES: (RoutingTables | null)[] = [
+  null,
+  {
+    routerOne: [
+      { to: "three", via: "routerTwo" },
+      { to: "four", via: "routerTwo" },
+    ],
+    routerTwo: [
+      { to: "one", via: "routerOne" },
+      { to: "two", via: "routerOne" },
+    ],
+  },
+  {
+    routerOne: [{ network: 2, via: "routerTwo" }],
+    routerTwo: [{ network: 1, via: "routerOne" }],
+  },
+  {
+    routerOne: [
+      { network: 2, via: "routerTwo" },
+      { network: 3, via: "routerThree" },
+    ],
+    routerTwo: [
+      { network: 1, via: "routerOne" },
+      { network: 3, via: "routerThree" },
+    ],
+    routerThree: [
+      { network: 1, via: "routerOne" },
+      { network: 2, via: "routerTwo" },
+    ],
+  },
+];
+
+// Whether a routing table row covers the computer `pointId`.
+function routeCovers(route: Route, pointId: string) {
+  return "to" in route ? route.to === pointId : NETWORK_OF[pointId] === route.network;
+}
 
 // Routing tables hang this far below their router's center, and are sized in
 // the same units as the routers (before NODE_SCALE enlarges both). Each row is
 // a computer's shape, an arrow, and the badge of the router to send it to,
 // with the same padding on every side.
 const TABLE_OFFSET = 1;
+// Tables above a router clear its numbered card too.
+const TABLE_ABOVE_OFFSET = 1.6;
 const TABLE_PADDING = 0.18;
 const TABLE_GAP = 0.12;
 const TABLE_SHAPE_SIZE = 0.5;
@@ -129,9 +197,25 @@ const twoNetworkConnections = [
   ["routerOne", "routerTwo"],
 ] as const;
 
+const threeNetworkConnections = [
+  ...twoNetworkConnections,
+  ["routerThree", "five"],
+  ["routerThree", "six"],
+  ["routerOne", "routerThree"],
+  ["routerTwo", "routerThree"],
+] as const;
+
+// Routers whose routing table sits above them rather than below, keeping it
+// clear of links heading down: the top two routers of the triangle.
+const TABLES_ABOVE = new Set(["routerOne", "routerTwo"]);
+
 function getConnections(scene: ScenePoint[]) {
   const pointById = new Map(scene.map((point) => [point.id, point]));
-  const connections = pointById.has("routerTwo") ? twoNetworkConnections : firstNetworkConnections;
+  const connections = pointById.has("routerThree")
+    ? threeNetworkConnections
+    : pointById.has("routerTwo")
+      ? twoNetworkConnections
+      : firstNetworkConnections;
 
   return connections.flatMap(([fromId, toId]) => {
     const from = pointById.get(fromId);
@@ -179,8 +263,13 @@ export function RouterNetwork() {
   // Where the route being drawn is headed, shown at its growing end.
   const [destination, setDestination] = useState<string | null>(null);
 
+  const { activeSection } = useScroller();
   const links = getConnections(scene);
   const hasSecondNetwork = scene.some((point) => point.id === "routerTwo");
+  const tables = SECTION_ROUTING_TABLES[Math.min(activeSection, SECTION_ROUTING_TABLES.length - 1)];
+  const routers = scene.filter((point) => tables?.[point.id]);
+  const hasThirdNetwork = scene.some((point) => point.id === "routerThree");
+  const tableAbove = (routerId: string) => hasThirdNetwork && TABLES_ABOVE.has(routerId);
 
   useScrollerEvent((event) => {
     if (!isSendPacketEvent(event)) return;
@@ -195,9 +284,9 @@ export function RouterNetwork() {
     setDestination(to.id);
     // Routers with a routing table look the destination up in it on the way through.
     const lookup: RouterLookup = (routerId, at, destination) => {
-      const routes = hasSecondNetwork ? ROUTING_TABLES[routerId] : undefined;
+      const routes = tables?.[routerId];
       if (!routes) return null;
-      const match = routes.findIndex((route) => route.to === (destination as ScenePoint).id);
+      const match = routes.findIndex((route) => routeCovers(route, (destination as ScenePoint).id));
       return tableLookup(routerId, at, routes.length, match);
     };
     animationRef.current = animate(routeSequence(route, { lookup }), {
@@ -216,15 +305,11 @@ export function RouterNetwork() {
     clearRoute(animate);
   }, [layoutKey, animate]);
 
-  // With two networks, computers take their network's color.
   const points = hasSecondNetwork
     ? scene.map((point) =>
         point.shape === "router"
           ? point
-          : {
-              ...point,
-              className: ["three", "four"].includes(point.id) ? "fill-orange-8" : "fill-blue-7",
-            },
+          : { ...point, className: NETWORK_FILLS[NETWORK_OF[point.id]] ?? point.className },
       )
     : scene;
   const head = points.find((point) => point.id === destination);
@@ -253,22 +338,19 @@ export function RouterNetwork() {
               />
             ))}
           </g>
-          {hasSecondNetwork &&
-            scene
-              .filter((point) => ROUTING_TABLES[point.id])
-              .map((router) => (
-                <line
-                  key={`${router.id}-table-link`}
-                  x1={router.x}
-                  y1={router.y}
-                  x2={router.x}
-                  y2={router.y + TABLE_OFFSET}
-                  stroke="black"
-                  strokeDasharray="4 3"
-                  strokeWidth="1"
-                  vectorEffect="non-scaling-stroke"
-                />
-              ))}
+          {routers.map((router) => (
+            <line
+              key={`${router.id}-table-link`}
+              x1={router.x}
+              y1={router.y}
+              x2={router.x}
+              y2={tableAbove(router.id) ? router.y - TABLE_ABOVE_OFFSET : router.y + TABLE_OFFSET}
+              stroke="black"
+              strokeDasharray="4 3"
+              strokeWidth="1"
+              vectorEffect="non-scaling-stroke"
+            />
+          ))}
           <LinkFills
             count={links.length}
             head={head && <Shape type={head.shape} className={head.className} />}
@@ -289,19 +371,17 @@ export function RouterNetwork() {
           {points.map((point) => (
             <ScenePoint key={point.id} point={point} />
           ))}
-          {hasSecondNetwork &&
-            scene
-              .filter((point) => ROUTING_TABLES[point.id])
-              .map((router) => (
-                <RoutingTable
-                  key={`${router.id}-table`}
-                  routerId={router.id}
-                  x={router.x}
-                  y={router.y + TABLE_OFFSET}
-                  routes={ROUTING_TABLES[router.id]}
-                  points={points}
-                />
-              ))}
+          {routers.map((router) => (
+            <RoutingTable
+              key={`${router.id}-table`}
+              routerId={router.id}
+              x={router.x}
+              y={tableAbove(router.id) ? router.y - TABLE_ABOVE_OFFSET : router.y + TABLE_OFFSET}
+              above={tableAbove(router.id)}
+              routes={tables?.[router.id] ?? []}
+              points={points}
+            />
+          ))}
         </SmallScreenCenter>
       </svg>
     </div>
@@ -373,18 +453,20 @@ function Shape({ type, className }: { type: ScenePoint["shape"]; className?: str
 }
 
 // A table of which router to send each computer's data to, hanging from its
-// top-center at (x, y).
+// top-center at (x, y), or standing on its bottom-center there when `above`.
 function RoutingTable({
   routerId,
   x,
   y,
+  above = false,
   routes,
   points,
 }: {
   routerId: string;
   x: number;
   y: number;
-  routes: { to: string; via: string }[];
+  above?: boolean;
+  routes: Route[];
   points: ScenePoint[];
 }) {
   const left = -TABLE_WIDTH / 2;
@@ -396,84 +478,101 @@ function RoutingTable({
 
   return (
     <g transform={`translate(${x} ${y})`} data-lookup={routerId}>
+      {/* Scaled around (x, y), the edge nearest the router, then drawn from there. */}
       <g className={`${NODE_SCALE} font-sans`}>
-        <rect x={left} width={TABLE_WIDTH} height={height} fill="white" />
-        {routes.map((route, index) => {
-          const top = index * TABLE_ROW_HEIGHT;
-          const middle = top + TABLE_ROW_HEIGHT / 2;
-          const badge = ROUTER_BADGES[route.via];
-          const computer = points.find((point) => point.id === route.to);
-          return (
-            <g key={route.to}>
-              {/* Highlights the row as the router checks it during a lookup. */}
-              <rect
-                data-lookup-row={index}
-                x={left}
-                y={top}
-                width={TABLE_WIDTH}
-                height={TABLE_ROW_HEIGHT}
-                style={{ fill: "var(--gray-4)" }}
-                opacity="0"
-              />
-              {index > 0 && (
-                <line
-                  x1={left}
-                  x2={-left}
-                  y1={top}
-                  y2={top}
-                  stroke="black"
-                  strokeDasharray="4 3"
-                  strokeWidth="1"
+        <g transform={above ? `translate(0 ${-height})` : undefined}>
+          <rect x={left} width={TABLE_WIDTH} height={height} fill="white" />
+          {routes.map((route, index) => {
+            const top = index * TABLE_ROW_HEIGHT;
+            const middle = top + TABLE_ROW_HEIGHT / 2;
+            const badge = ROUTER_BADGES[route.via];
+            const computer = "to" in route && points.find((point) => point.id === route.to);
+            return (
+              <g key={"to" in route ? route.to : `network-${route.network}`}>
+                {/* Highlights the row as the router checks it during a lookup. */}
+                <rect
+                  data-lookup-row={index}
+                  x={left}
+                  y={top}
+                  width={TABLE_WIDTH}
+                  height={TABLE_ROW_HEIGHT}
+                  style={{ fill: "var(--gray-4)" }}
+                  opacity="0"
+                />
+                {index > 0 && (
+                  <line
+                    x1={left}
+                    x2={-left}
+                    y1={top}
+                    y2={top}
+                    stroke="black"
+                    strokeDasharray="4 3"
+                    strokeWidth="1"
+                    vectorEffect="non-scaling-stroke"
+                  />
+                )}
+                {computer && (
+                  // Shrink each shape to half size, and the larger ones further to match a circle.
+                  <g
+                    transform={`translate(${shapeX + TABLE_SHAPE_SIZE / 2} ${middle}) scale(${TABLE_SHAPE_SIZE / (SHAPE_FIT[computer.shape]?.size ?? 1)}) translate(0 ${-(SHAPE_FIT[computer.shape]?.offsetY ?? 0)})`}
+                  >
+                    <Shape type={computer.shape} className={computer.className} />
+                  </g>
+                )}
+                {/* A whole network, written like the start of its addresses. */}
+                {"network" in route && (
+                  <text
+                    x={shapeX + TABLE_SHAPE_SIZE / 2}
+                    y={middle}
+                    style={{ fill: "var(--gray-12)" }}
+                    className="font-mono"
+                    fontSize="0.26"
+                    textAnchor="middle"
+                    dy="0.35em"
+                  >
+                    {route.network}.x
+                  </text>
+                )}
+                <path
+                  d={`M ${arrowX} ${middle} h ${TABLE_ARROW_WIDTH} m ${-arrowHead} ${-arrowHead} l ${arrowHead} ${arrowHead} l ${-arrowHead} ${arrowHead}`}
+                  stroke="var(--gray-12)"
+                  strokeWidth="1.25"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
                   vectorEffect="non-scaling-stroke"
                 />
-              )}
-              {computer && (
-                // Shrink each shape to half size, and the larger ones further to match a circle.
-                <g
-                  transform={`translate(${shapeX + TABLE_SHAPE_SIZE / 2} ${middle}) scale(${TABLE_SHAPE_SIZE / (SHAPE_FIT[computer.shape]?.size ?? 1)}) translate(0 ${-(SHAPE_FIT[computer.shape]?.offsetY ?? 0)})`}
+                <rect
+                  x={badgeX}
+                  y={middle - TABLE_BADGE_SIZE / 2}
+                  width={TABLE_BADGE_SIZE}
+                  height={TABLE_BADGE_SIZE}
+                  style={{ fill: badge.fill }}
+                />
+                <text
+                  x={badgeX + TABLE_BADGE_SIZE / 2}
+                  y={middle}
+                  style={{ fill: badge.text }}
+                  fontSize="0.3"
+                  fontWeight="700"
+                  textAnchor="middle"
+                  dy="0.35em"
                 >
-                  <Shape type={computer.shape} className={computer.className} />
-                </g>
-              )}
-              <path
-                d={`M ${arrowX} ${middle} h ${TABLE_ARROW_WIDTH} m ${-arrowHead} ${-arrowHead} l ${arrowHead} ${arrowHead} l ${-arrowHead} ${arrowHead}`}
-                stroke="var(--gray-12)"
-                strokeWidth="1.25"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                vectorEffect="non-scaling-stroke"
-              />
-              <rect
-                x={badgeX}
-                y={middle - TABLE_BADGE_SIZE / 2}
-                width={TABLE_BADGE_SIZE}
-                height={TABLE_BADGE_SIZE}
-                style={{ fill: badge.fill }}
-              />
-              <text
-                x={badgeX + TABLE_BADGE_SIZE / 2}
-                y={middle}
-                style={{ fill: badge.text }}
-                fontSize="0.3"
-                fontWeight="700"
-                textAnchor="middle"
-                dy="0.35em"
-              >
-                {badge.label}
-              </text>
-            </g>
-          );
-        })}
-        {/* The border goes on top, so highlighted rows don't cover it. */}
-        <rect
-          x={left}
-          width={TABLE_WIDTH}
-          height={height}
-          fill="none"
-          stroke="black"
-          strokeWidth="1"
-          vectorEffect="non-scaling-stroke"
-        />
+                  {badge.label}
+                </text>
+              </g>
+            );
+          })}
+          {/* The border goes on top, so highlighted rows don't cover it. */}
+          <rect
+            x={left}
+            width={TABLE_WIDTH}
+            height={height}
+            fill="none"
+            stroke="black"
+            strokeWidth="1"
+            vectorEffect="non-scaling-stroke"
+          />
+        </g>
       </g>
     </g>
   );
